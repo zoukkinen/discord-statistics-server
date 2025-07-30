@@ -381,12 +381,12 @@ export class Database {
             ORDER BY player_count DESC
         `) as {game_name: string, player_count: number}[];
         
-        // If no active sessions found, fallback to most recent game stats (within last 5 minutes)
+        // If no active sessions found, fallback to most recent game stats (within last 1 minute)
         if (currentGames.length === 0) {
             currentGames = await allAsync(`
                 SELECT game_name, player_count
                 FROM game_stats
-                WHERE timestamp >= datetime('now', '-5 minutes')
+                WHERE timestamp >= datetime('now', '-1 minute')
                 AND player_count > 0
                 ORDER BY timestamp DESC, player_count DESC
             `) as {game_name: string, player_count: number}[];
