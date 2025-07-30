@@ -14,7 +14,7 @@ A Discord bot that monitors your Discord server's member activity and tracks wha
 - 📈 **Historical Statistics**: Store and visualize activity data over time
 - 🌐 **Web Dashboard**: Beautiful web interface to view all statistics
 - 📱 **Responsive Design**: Works great on desktop and mobile devices
-- ⚡ **Real-time Updates**: Dashboard updates automatically every 30 seconds
+- ⚡ **Real-time Updates**: Dashboard updates automatically every 15 seconds, with real-time game activity tracking
 
 ## 🚀 Quick Start
 
@@ -402,13 +402,33 @@ data/
 
 ## 📈 Data Collection
 
-The bot collects the following data every 5 minutes:
+The bot collects the following data every 2 minutes:
 - Total member count
 - Online member count
 - Games being played and player counts
-- Individual game session start/end times
+
+Real-time event tracking:
+- Individual game session start/end times (immediate via Discord presence events)
+- Member join/leave events (immediate)
 
 All data is stored locally in an SQLite database.
+
+### Discord API Rate Limits & Performance
+
+**Current Optimized Settings:**
+- **Stats Collection**: Every 2 minutes (down from 5 minutes)
+- **Dashboard Updates**: Every 15 seconds (down from 30 seconds)  
+- **Game Activity**: Real-time via Discord events (no polling)
+
+**Discord Rate Limits:**
+- Guild data fetching: ~50 requests per 10 seconds per bot
+- We use only 1-2 API calls every 2 minutes, well within limits
+- Presence data is received via WebSocket events (real-time, no rate limit)
+
+**Further Optimizations Possible:**
+- Could reduce to 1 minute intervals if needed (still within rate limits)
+- Real-time presence events ensure immediate game tracking
+- Member join/leave events are also real-time
 
 ## 🎯 Assembly Summer 2025
 

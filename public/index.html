@@ -412,17 +412,17 @@
             await updateCurrentGames();
             await updateTopGames();
             
-            // Auto-refresh every 30 seconds
+            // Auto-refresh current stats every 15 seconds (improved responsiveness)
             setInterval(async () => {
                 await updateCurrentStats();
                 await updateCurrentGames();
-            }, 30000);
+            }, 15000);
             
-            // Update charts every 5 minutes
+            // Update charts every 2 minutes (matches data collection frequency)
             setInterval(async () => {
                 await updateMemberChart();
                 await updateTopGames();
-            }, 300000);
+            }, 120000);
         }
 
         async function updateCurrentStats() {

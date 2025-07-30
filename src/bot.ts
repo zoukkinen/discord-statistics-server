@@ -82,12 +82,12 @@ export class DiscordActivityBot {
         // Collect stats immediately
         this.collectCurrentStats();
         
-        // Then collect every 5 minutes
+        // Then collect every 2 minutes (reduced from 5 minutes for tighter tracking)
         this.statsInterval = setInterval(() => {
             this.collectCurrentStats();
-        }, 5 * 60 * 1000);
+        }, 2 * 60 * 1000); // 2 minutes = 120 seconds
 
-        console.log('📊 Started automatic stats collection (every 5 minutes)');
+        console.log('📊 Started automatic stats collection (every 2 minutes)');
     }
 
     private async collectCurrentStats(): Promise<void> {
