@@ -306,6 +306,155 @@
             font-size: 0.8em;
         }
 
+        .footer-info {
+            text-align: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(0, 255, 157, 0.2);
+        }
+
+        .footer-info p {
+            color: #00ff9d;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            opacity: 0.8;
+        }
+
+        .info-button {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(0, 255, 157, 0.3);
+            color: #00ff9d;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-button:hover {
+            border-color: rgba(0, 255, 157, 0.6);
+            background: rgba(0, 255, 157, 0.1);
+            box-shadow: 0 2px 10px rgba(0, 255, 157, 0.2);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #2d2d2d 100%);
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid rgba(0, 255, 157, 0.3);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content h2 {
+            color: #00ff9d;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .modal-section {
+            margin-bottom: 20px;
+        }
+
+        .modal-section h3 {
+            color: #ff6600;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .modal-section ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .modal-section li {
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+            line-height: 1.4;
+        }
+
+        .modal-section li::before {
+            content: '▶';
+            color: #00ff9d;
+            position: absolute;
+            left: 0;
+            font-size: 0.8em;
+        }
+
+        .modal-section p {
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+
+        .modal-footer {
+            text-align: center;
+            padding-top: 15px;
+            border-top: 1px solid rgba(0, 255, 157, 0.2);
+            margin-top: 20px;
+        }
+
+        .modal-footer p {
+            color: #00ff9d;
+            font-style: italic;
+            opacity: 0.8;
+        }
+
+        .modal-footer a {
+            color: #ff6600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-style: normal;
+            font-weight: 500;
+        }
+
+        .modal-footer a:hover {
+            color: #00ff9d;
+            text-shadow: 0 0 8px rgba(0, 255, 157, 0.5);
+        }
+
+        .close {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #ff6600;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close:hover {
+            color: #00ff9d;
+        }
+
         .loading {
             text-align: center;
             color: #00ff9d;
@@ -487,7 +636,7 @@
     <div class="container">
         <div class="header">
             <h1>🎮 Assembly Summer 2025</h1>
-            <p>Discord Activity Tracker • 31.07.—03.08.2025 • Messukeskus Helsinki</p>
+            <p>Discord Activity Tracker • 31.07 — 03.08.2025 • Messukeskus Helsinki</p>
         </div>
 
         <div class="stats-grid">
@@ -548,6 +697,62 @@
 
         <div class="last-updated">
             Last updated: <span id="timestamp">-</span>
+        </div>
+
+        <div class="footer-info">
+            <p>Event Period: July 31, 2025 10:00 - August 3, 2025 16:00 (Helsinki Time)</p>
+            <button class="info-button" onclick="openModal()">How does this work?</button>
+        </div>
+
+        <!-- Modal -->
+        <div id="infoModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h2>🎮 Assembly Summer 2025 Discord Activity Tracker</h2>
+                
+                <div class="modal-section">
+                    <h3>📊 What We Track</h3>
+                    <ul>
+                        <li><strong>Discord Server Activity:</strong> Number of online members and total server members</li>
+                        <li><strong>Game Activity:</strong> What games Discord users are currently playing</li>
+                        <li><strong>Historical Data:</strong> Member count trends and game popularity over time</li>
+                        <li><strong>Statistics:</strong> Total unique games played and player counts during Assembly 2025</li>
+                    </ul>
+                </div>
+
+                <div class="modal-section">
+                    <h3>🔍 How It Works</h3>
+                    <ul>
+                        <li>The bot monitors the Assembly Discord server every 2 minutes</li>
+                        <li>Only public Discord activity is tracked (games shown in user status)</li>
+                        <li>No personal messages, conversations, or private data is collected</li>
+                        <li>Data is aggregated and anonymized for statistical purposes</li>
+                        <li>Dashboard updates in real-time to show current activity</li>
+                    </ul>
+                </div>
+
+                <div class="modal-section">
+                    <h3>⏰ Event Timeframe</h3>
+                    <p>Data collection is limited to the official Assembly Summer 2025 event period:</p>
+                    <p><strong>Start:</strong> July 31, 2025 at 10:00 (Helsinki Time)<br>
+                    <strong>End:</strong> August 3, 2025 at 16:00 (Helsinki Time)</p>
+                </div>
+
+                <div class="modal-section">
+                    <h3>🛡️ Privacy</h3>
+                    <ul>
+                        <li>No usernames or personal identifiers are stored</li>
+                        <li>Only public Discord "Playing" status is tracked</li>
+                        <li>Data is used solely for Assembly event statistics</li>
+                        <li>All data is automatically deleted after the event</li>
+                    </ul>
+                </div>
+
+                <div class="modal-footer">
+                    <p>Made with ❤️ for Assembly Summer 2025 community</p>
+                    <p><a href="https://github.com/zoukkinen" target="_blank" rel="noopener noreferrer">🔗 GitHub: @zoukkinen</a></p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -652,8 +857,8 @@
                 document.getElementById('activeGames').textContent = data.currentGames.length;
                 
                 // Get total unique games for Assembly timeframe
-                const eventStart = '2025-07-30T00:00:00Z';
-                const eventEnd = '2025-08-03T23:59:59Z';
+                const eventStart = '2025-07-31T07:00:00Z'; // 10:00 Finnish time (UTC+3)
+                const eventEnd = '2025-08-03T13:00:00Z';   // 16:00 Finnish time (UTC+3)
                 const topGamesResponse = await fetch(`/api/top-games?start=${eventStart}&end=${eventEnd}&limit=100`);
                 const topGamesData = await topGamesResponse.json();
                 document.getElementById('totalGames').textContent = `Total: ${topGamesData.length}`;
@@ -679,9 +884,9 @@
             addRefreshAnimation(chartContainer);
             
             try {
-                // Assembly Summer 2025 event period: 30.07.2025 - 03.08.2025
-                const eventStart = '2025-07-30T00:00:00Z';
-                const eventEnd = '2025-08-03T23:59:59Z';
+                // Assembly Summer 2025 event period: 31.07.2025 10:00 - 03.08.2025 16:00
+                const eventStart = '2025-07-31T07:00:00Z'; // 10:00 Finnish time (UTC+3)
+                const eventEnd = '2025-08-03T13:00:00Z';   // 16:00 Finnish time (UTC+3)
                 const response = await fetch(`/api/member-history?start=${eventStart}&end=${eventEnd}`);
                 const data = await response.json();
                 
@@ -800,9 +1005,9 @@
             addRefreshAnimation(container.parentElement);
             
             try {
-                // Assembly Summer 2025 event period: 30.07.2025 - 03.08.2025
-                const eventStart = '2025-07-30T00:00:00Z';
-                const eventEnd = '2025-08-03T23:59:59Z';
+                // Assembly Summer 2025 event period: 31.07.2025 10:00 - 03.08.2025 16:00
+                const eventStart = '2025-07-31T07:00:00Z'; // 10:00 Finnish time (UTC+3)
+                const eventEnd = '2025-08-03T13:00:00Z';   // 16:00 Finnish time (UTC+3)
                 const response = await fetch(`/api/top-games?start=${eventStart}&end=${eventEnd}&limit=10`);
                 const data = await response.json();
                 
@@ -892,6 +1097,30 @@
                 errorDiv.remove();
             }, 5000);
         }
+
+        // Modal functions
+        function openModal() {
+            document.getElementById('infoModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('infoModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('infoModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeModal();
+            }
+        });
 
         // Start the dashboard
         init();
