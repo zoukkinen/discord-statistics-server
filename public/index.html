@@ -216,6 +216,43 @@
             flex-direction: column;
         }
 
+        /* New side-by-side layout for Currently Playing and Recent Activity */
+        .side-by-side-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        /* Full height container for Top Games */
+        .chart-container.full-height {
+            height: calc(100vh - 200px);
+            min-height: 500px;
+        }
+
+        /* Expanded game list for Top Games */
+        .game-list.expanded {
+            max-height: none;
+            height: calc(100% - 60px);
+            gap: 4px;
+        }
+
+        /* Compact game items for Top Games list */
+        .game-list.expanded .game-item {
+            padding: 6px 8px;
+            font-size: 0.85em;
+        }
+
+        .game-list.expanded .game-name {
+            font-size: 0.8em;
+            margin-bottom: 2px;
+        }
+
+        .game-list.expanded .game-stats {
+            font-size: 0.7em;
+            line-height: 1.2;
+        }
+
         .game-list {
             display: grid;
             grid-template-columns: 1fr;
@@ -449,14 +486,37 @@
                 gap: 10px;
             }
             
+            .side-by-side-grid {
+                gap: 10px;
+            }
+            
             .game-list {
                 max-height: 150px;
+            }
+            
+            .chart-container.full-height {
+                min-height: 400px;
             }
         }
 
         @media (max-width: 768px) {
             .content-grid {
                 grid-template-columns: 1fr;
+            }
+            
+            .side-by-side-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .chart-container.full-height {
+                height: auto;
+                min-height: 300px;
+            }
+            
+            .game-list.expanded {
+                max-height: 300px;
+                height: auto;
             }
             
             .stats-grid {
@@ -507,25 +567,28 @@
                     </div>
                 </div>
 
-                <div class="chart-container">
-                    <h3>🎮 Currently Playing</h3>
-                    <div id="currentGames" class="game-list">
-                        <div class="loading">Loading...</div>
+                <!-- Side-by-side layout for Currently Playing and Recent Activity -->
+                <div class="side-by-side-grid">
+                    <div class="chart-container">
+                        <h3>🎮 Currently Playing</h3>
+                        <div id="currentGames" class="game-list">
+                            <div class="loading">Loading...</div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <h3>� Recent Activity</h3>
+                        <div id="recentActivity" class="activity-feed">
+                            <div class="loading">Loading...</div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="right-column">
-                <div class="chart-container">
-                    <h3>🏆 Top Games (Assembly 2025)</h3>
-                    <div id="topGames" class="game-list">
-                        <div class="loading">Loading...</div>
-                    </div>
-                </div>
-                
-                <div class="chart-container">
-                    <h3>🎮 Recent Activity</h3>
-                    <div id="recentActivity" class="activity-feed">
+                <div class="chart-container full-height">
+                    <h3>� Top Games (Assembly 2025)</h3>
+                    <div id="topGames" class="game-list expanded">
                         <div class="loading">Loading...</div>
                     </div>
                 </div>
