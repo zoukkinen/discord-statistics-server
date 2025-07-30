@@ -14,7 +14,7 @@ A Discord bot that monitors your Discord server's member activity and tracks wha
 - 📈 **Historical Statistics**: Store and visualize activity data over time
 - 🌐 **Web Dashboard**: Beautiful web interface to view all statistics
 - 📱 **Responsive Design**: Works great on desktop and mobile devices
-- ⚡ **Real-time Updates**: Dashboard updates automatically every 15 seconds, with real-time game activity tracking
+- ⚡ **Real-time Updates**: Dashboard updates automatically every 15 seconds with smooth visual refresh animations and real-time game activity tracking
 
 ## 🚀 Quick Start
 
@@ -362,6 +362,13 @@ Your bot needs the following permissions:
 - Currently playing games with player counts
 - Top games by total playtime
 - Unique players per game
+- **NEW**: Real-time activity feed showing when players start/stop playing games
+
+### Visual Experience
+- Smooth refresh animations when areas update
+- Visual feedback for data updates
+- Highlighted new content and activity
+- Assembly-themed cyberpunk styling
 
 ## 🛠️ Development
 

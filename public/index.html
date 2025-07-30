@@ -268,6 +268,69 @@
             opacity: 0.9;
         }
 
+        .activity-feed {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 10px 0;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border-left: 3px solid transparent;
+            transition: all 0.3s ease;
+            font-size: 0.85em;
+        }
+
+        .activity-item.started {
+            border-left-color: #00ff9d;
+        }
+
+        .activity-item.stopped {
+            border-left-color: #ff6b6b;
+        }
+
+        .activity-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(2px);
+        }
+
+        .activity-icon {
+            margin-right: 8px;
+            font-size: 1.1em;
+        }
+
+        .activity-details {
+            flex: 1;
+        }
+
+        .activity-user {
+            font-weight: 600;
+            color: #00ff9d;
+            font-size: 0.9em;
+        }
+
+        .activity-game {
+            margin: 2px 0;
+            opacity: 0.9;
+        }
+
+        .activity-time {
+            font-size: 0.75em;
+            opacity: 0.6;
+            margin-top: 2px;
+        }
+
+        .activity-duration {
+            font-size: 0.75em;
+            color: #ffd700;
+            margin-left: 8px;
+        }
+
         .last-updated {
             text-align: center;
             opacity: 0.7;
@@ -283,6 +346,72 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             opacity: 0.8;
+        }
+
+        /* Refresh animations and transitions */
+        .refreshing {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .refreshing::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00ff9d, transparent);
+            animation: refreshSlide 1s ease-in-out;
+            z-index: 1000;
+        }
+
+        @keyframes refreshSlide {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .fade-in {
+            opacity: 0;
+            animation: fadeIn 0.5s ease-in-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .stat-card.updating {
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(0, 255, 157, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .chart-container.updating {
+            border: 1px solid rgba(0, 255, 157, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        /* Pulse animation for active elements */
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 255, 157, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0); }
+        }
+
+        /* New item highlight */
+        .new-item {
+            background: rgba(0, 255, 157, 0.2) !important;
+            animation: highlightNew 3s ease-out forwards;
+        }
+
+        @keyframes highlightNew {
+            0% { background: rgba(0, 255, 157, 0.4) !important; }
+            100% { background: rgba(255, 255, 255, 0.05) !important; }
         }
 
         .error {
@@ -394,6 +523,13 @@
                         <div class="loading">Loading...</div>
                     </div>
                 </div>
+                
+                <div class="chart-container">
+                    <h3>🎮 Recent Activity</h3>
+                    <div id="recentActivity" class="activity-feed">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -411,11 +547,13 @@
             await updateMemberChart();
             await updateCurrentGames();
             await updateTopGames();
+            await updateRecentActivity();
             
             // Auto-refresh current stats every 15 seconds (improved responsiveness)
             setInterval(async () => {
                 await updateCurrentStats();
                 await updateCurrentGames();
+                await updateRecentActivity(); // Update activity feed frequently
             }, 15000);
             
             // Update charts every 2 minutes (matches data collection frequency)
@@ -425,7 +563,48 @@
             }, 120000);
         }
 
+        // Visual feedback helper functions
+        function addRefreshAnimation(element) {
+            element.classList.add('refreshing');
+            setTimeout(() => {
+                element.classList.remove('refreshing');
+            }, 1000);
+        }
+
+        function addUpdateAnimation(element) {
+            element.classList.add('updating');
+            setTimeout(() => {
+                element.classList.remove('updating');
+            }, 300);
+        }
+
+        function highlightNewContent(container) {
+            const items = container.querySelectorAll('.game-item, .activity-item');
+            items.forEach((item, index) => {
+                if (index < 3) { // Highlight first 3 items as "recent"
+                    item.classList.add('fade-in');
+                    setTimeout(() => {
+                        item.classList.remove('fade-in');
+                    }, 500);
+                }
+            });
+        }
+
+        function updateTimestamp() {
+            const timestamp = document.getElementById('timestamp');
+            if (timestamp) {
+                timestamp.textContent = new Date().toLocaleTimeString();
+                timestamp.parentElement.classList.add('pulse');
+                setTimeout(() => {
+                    timestamp.parentElement.classList.remove('pulse');
+                }, 2000);
+            }
+        }
+
         async function updateCurrentStats() {
+            const statCards = document.querySelectorAll('.stat-card');
+            statCards.forEach(card => addUpdateAnimation(card));
+            
             try {
                 const response = await fetch('/api/current');
                 const data = await response.json();
@@ -442,7 +621,7 @@
                 document.getElementById('lastUpdate').textContent = 
                     data.memberStats ? new Date(data.memberStats.timestamp).toLocaleTimeString() : 'No data';
                     
-                document.getElementById('timestamp').textContent = new Date().toLocaleString();
+                updateTimestamp();
                 
             } catch (error) {
                 console.error('Error updating current stats:', error);
@@ -451,6 +630,9 @@
         }
 
         async function updateMemberChart() {
+            const chartContainer = document.querySelector('.chart-container');
+            addRefreshAnimation(chartContainer);
+            
             try {
                 const response = await fetch('/api/member-history?hours=24');
                 const data = await response.json();
@@ -531,6 +713,9 @@
         }
 
         async function updateCurrentGames() {
+            const container = document.getElementById('currentGames');
+            addRefreshAnimation(container.parentElement);
+            
             try {
                 const response = await fetch('/api/current');
                 const data = await response.json();
@@ -549,6 +734,8 @@
                     </div>
                 `).join('');
                 
+                highlightNewContent(container);
+                
             } catch (error) {
                 console.error('Error updating current games:', error);
                 showError('Failed to update current games');
@@ -556,6 +743,9 @@
         }
 
         async function updateTopGames() {
+            const container = document.getElementById('topGames');
+            addRefreshAnimation(container.parentElement);
+            
             try {
                 const response = await fetch('/api/top-games?hours=24&limit=10');
                 const data = await response.json();
@@ -583,10 +773,76 @@
                     `;
                 }).join('');
                 
+                highlightNewContent(container);
+                
             } catch (error) {
                 console.error('Error updating top games:', error);
                 showError('Failed to update top games');
             }
+        }
+
+        async function updateRecentActivity() {
+            const container = document.getElementById('recentActivity');
+            addRefreshAnimation(container.parentElement);
+            
+            try {
+                const response = await fetch('/api/recent-activity?limit=15');
+                const data = await response.json();
+                
+                const container = document.getElementById('recentActivity');
+                
+                if (data.length === 0) {
+                    container.innerHTML = '<div class="loading">No recent activity</div>';
+                    return;
+                }
+                
+                container.innerHTML = data.map(activity => {
+                    const timeAgo = getTimeAgo(activity.timestamp);
+                    const icon = activity.action === 'started' ? '▶️' : '⏹️';
+                    const actionText = activity.action === 'started' ? 'started playing' : 'stopped playing';
+                    const userId = activity.user_id.slice(-4); // Show last 4 chars of user ID
+                    
+                    let durationText = '';
+                    if (activity.action === 'stopped' && activity.session_duration) {
+                        const hours = Math.floor(activity.session_duration / 60);
+                        const minutes = Math.round(activity.session_duration % 60);
+                        if (hours > 0) {
+                            durationText = `<span class="activity-duration">${hours}h ${minutes}m</span>`;
+                        } else {
+                            durationText = `<span class="activity-duration">${minutes}m</span>`;
+                        }
+                    }
+                    
+                    return `
+                        <div class="activity-item ${activity.action}">
+                            <span class="activity-icon">${icon}</span>
+                            <div class="activity-details">
+                                <div class="activity-user">User ...${userId}</div>
+                                <div class="activity-game">${actionText} ${activity.game_name}</div>
+                                <div class="activity-time">${timeAgo}</div>
+                            </div>
+                            ${durationText}
+                        </div>
+                    `;
+                }).join('');
+                
+                highlightNewContent(container);
+                
+            } catch (error) {
+                console.error('Error updating recent activity:', error);
+                showError('Failed to update recent activity');
+            }
+        }
+
+        function getTimeAgo(timestamp) {
+            const now = new Date();
+            const time = new Date(timestamp + 'Z'); // Add Z for UTC
+            const diff = Math.floor((now - time) / 1000); // difference in seconds
+            
+            if (diff < 60) return `${diff}s ago`;
+            if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+            return `${Math.floor(diff / 86400)}d ago`;
         }
 
         function showError(message) {

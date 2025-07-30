@@ -11,6 +11,7 @@ export class DiscordActivityBot {
     private webServer: WebServer;
     private guildId: string;
     private statsInterval: NodeJS.Timeout | null = null;
+    private presenceUpdateTimeout: NodeJS.Timeout | null = null;
 
     constructor() {
         this.client = new Client({
@@ -65,16 +66,31 @@ export class DiscordActivityBot {
         const oldGame = oldPresence?.activities?.find((activity: any) => activity.type === ActivityType.Playing);
         const newGame = newPresence?.activities?.find((activity: any) => activity.type === ActivityType.Playing);
 
+        let activityChanged = false;
+
         // If user started playing a new game
         if (newGame && (!oldGame || oldGame.name !== newGame.name)) {
             this.database.recordGameSession(newPresence.userId, newGame.name, 'start');
             console.log(`🎮 ${newPresence.user?.tag} started playing ${newGame.name}`);
+            activityChanged = true;
         }
 
         // If user stopped playing a game
         if (oldGame && (!newGame || newGame.name !== oldGame.name)) {
             this.database.recordGameSession(newPresence.userId, oldGame.name, 'end');
             console.log(`🎮 ${newPresence.user?.tag} stopped playing ${oldGame.name}`);
+            activityChanged = true;
+        }
+
+        // If activity changed, trigger a quick stats update to refresh "Currently Playing"
+        if (activityChanged) {
+            // Debounce the stats collection to avoid spam
+            if (this.presenceUpdateTimeout) {
+                clearTimeout(this.presenceUpdateTimeout);
+            }
+            this.presenceUpdateTimeout = setTimeout(() => {
+                this.collectCurrentStats();
+            }, 5000); // Wait 5 seconds to batch multiple changes
         }
     }
 
@@ -126,8 +142,46 @@ export class DiscordActivityBot {
 
             console.log(`📊 Stats collected: ${onlineMembers}/${totalMembers} members online, ${playingGames.size} different games being played`);
             
+            // Clean up stale game sessions periodically (every 10 collection cycles = ~20 minutes)
+            if (Math.random() < 0.1) {
+                await this.database.cleanupStaleGameSessions();
+                await this.syncGameSessions(guild);
+            }
+            
         } catch (error) {
             console.error('❌ Error collecting stats:', error);
+        }
+    }
+
+    private async syncGameSessions(guild: any): Promise<void> {
+        try {
+            // Get all currently active sessions from database
+            const activeSessions = await this.database.getActiveSessions();
+            
+            // Get current Discord presence data
+            const currentlyPlaying = new Map<string, Set<string>>();
+            guild.members.cache.forEach((member: any) => {
+                const game = member.presence?.activities?.find((activity: any) => activity.type === ActivityType.Playing);
+                if (game) {
+                    if (!currentlyPlaying.has(game.name)) {
+                        currentlyPlaying.set(game.name, new Set());
+                    }
+                    currentlyPlaying.get(game.name)!.add(member.id);
+                }
+            });
+
+            // End sessions for users who are no longer playing according to Discord
+            for (const session of activeSessions) {
+                const currentPlayers = currentlyPlaying.get(session.game_name);
+                if (!currentPlayers || !currentPlayers.has(session.user_id)) {
+                    await this.database.recordGameSession(session.user_id, session.game_name, 'end');
+                    console.log(`🧹 Auto-ended stale session: User ...${session.user_id.slice(-4)} - ${session.game_name}`);
+                }
+            }
+
+            console.log(`🔄 Synced game sessions with Discord presence data`);
+        } catch (error) {
+            console.error('❌ Error syncing game sessions:', error);
         }
     }
 

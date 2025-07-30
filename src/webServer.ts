@@ -70,6 +70,17 @@ export class WebServer {
             }
         });
 
+        this.app.get('/api/recent-activity', async (req, res) => {
+            try {
+                const limit = parseInt(req.query.limit as string) || 20;
+                const activity = await this.database.getRecentGameActivity(limit);
+                res.json(activity);
+            } catch (error) {
+                console.error('Error fetching recent activity:', error);
+                res.status(500).json({ error: 'Failed to fetch recent activity' });
+            }
+        });
+
         // Health check endpoint
         this.app.get('/api/health', (req, res) => {
             res.json({ 

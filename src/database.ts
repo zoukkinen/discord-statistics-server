@@ -215,6 +215,50 @@ export class Database {
         });
     }
 
+    public async getRecentGameActivity(limit: number = 20): Promise<{
+        user_id: string,
+        game_name: string,
+        action: 'started' | 'stopped',
+        timestamp: string,
+        session_duration?: number
+    }[]> {
+        if (!this.db) throw new Error('Database not initialized');
+
+        return new Promise((resolve, reject) => {
+            this.db!.all(`
+                SELECT 
+                    user_id,
+                    game_name,
+                    CASE 
+                        WHEN end_time IS NULL THEN 'started'
+                        ELSE 'stopped'
+                    END as action,
+                    CASE 
+                        WHEN end_time IS NULL THEN start_time
+                        ELSE end_time
+                    END as timestamp,
+                    duration_minutes as session_duration
+                FROM game_sessions
+                WHERE start_time >= datetime('now', '-24 hours')
+                ORDER BY 
+                    CASE 
+                        WHEN end_time IS NULL THEN start_time
+                        ELSE end_time
+                    END DESC
+                LIMIT ?
+            `, [limit], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows as {
+                    user_id: string,
+                    game_name: string,
+                    action: 'started' | 'stopped',
+                    timestamp: string,
+                    session_duration?: number
+                }[]);
+            });
+        });
+    }
+
     public async getCurrentStats(): Promise<{memberStats: MemberStats | null, currentGames: {game_name: string, player_count: number}[]}> {
         if (!this.db) throw new Error('Database not initialized');
 
@@ -229,19 +273,40 @@ export class Database {
             LIMIT 1
         `) as MemberStats | null;
 
-        // Get current games (latest entry for each game in last 10 minutes)
+        // Get current games from active sessions (real-time)
         const currentGames = await allAsync(`
-            SELECT DISTINCT game_name, 
-                   (SELECT player_count FROM game_stats gs2 
-                    WHERE gs2.game_name = gs1.game_name 
-                    ORDER BY timestamp DESC LIMIT 1) as player_count
-            FROM game_stats gs1
-            WHERE timestamp >= datetime('now', '-10 minutes')
-            AND player_count > 0
+            SELECT game_name, 
+                   COUNT(DISTINCT user_id) as player_count
+            FROM game_sessions
+            WHERE end_time IS NULL 
+            AND start_time >= datetime('now', '-6 hours')
+            GROUP BY game_name
+            HAVING player_count > 0
             ORDER BY player_count DESC
         `) as {game_name: string, player_count: number}[];
 
         return { memberStats, currentGames };
+    }
+
+    public async cleanupStaleGameSessions(): Promise<void> {
+        if (!this.db) throw new Error('Database not initialized');
+
+        // End sessions that have been active for more than 8 hours (likely stale)
+        return new Promise((resolve, reject) => {
+            this.db!.run(`
+                UPDATE game_sessions 
+                SET end_time = CURRENT_TIMESTAMP,
+                    duration_minutes = ROUND((JULIANDAY(CURRENT_TIMESTAMP) - JULIANDAY(start_time)) * 24 * 60)
+                WHERE end_time IS NULL 
+                AND start_time < datetime('now', '-8 hours')
+            `, (err) => {
+                if (err) reject(err);
+                else {
+                    console.log('🧹 Cleaned up stale game sessions');
+                    resolve();
+                }
+            });
+        });
     }
 
     public async close(): Promise<void> {
@@ -251,5 +316,21 @@ export class Database {
             this.db = null;
             console.log('✅ Database connection closed');
         }
+    }
+
+    public async getActiveSessions(): Promise<{user_id: string, game_name: string, start_time: string}[]> {
+        if (!this.db) throw new Error('Database not initialized');
+
+        return new Promise((resolve, reject) => {
+            this.db!.all(`
+                SELECT user_id, game_name, start_time
+                FROM game_sessions
+                WHERE end_time IS NULL
+                AND start_time >= datetime('now', '-8 hours')
+            `, (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows as {user_id: string, game_name: string, start_time: string}[]);
+            });
+        });
     }
 }
