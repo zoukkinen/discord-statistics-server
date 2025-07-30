@@ -273,8 +273,8 @@ export class Database {
             LIMIT 1
         `) as MemberStats | null;
 
-        // Get current games from active sessions (real-time)
-        const currentGames = await allAsync(`
+        // Get current games from active sessions (real-time) - fallback to recent game stats if no sessions
+        let currentGames = await allAsync(`
             SELECT game_name, 
                    COUNT(DISTINCT user_id) as player_count
             FROM game_sessions
@@ -283,6 +283,26 @@ export class Database {
             HAVING player_count > 0
             ORDER BY player_count DESC
         `) as {game_name: string, player_count: number}[];
+        
+        // If no active sessions found, fallback to most recent game stats (within last 5 minutes)
+        if (currentGames.length === 0) {
+            currentGames = await allAsync(`
+                SELECT game_name, player_count
+                FROM game_stats
+                WHERE timestamp >= datetime('now', '-5 minutes')
+                AND player_count > 0
+                ORDER BY timestamp DESC, player_count DESC
+            `) as {game_name: string, player_count: number}[];
+            
+            // Remove duplicates, keeping the most recent entry for each game
+            const gameMap = new Map();
+            currentGames.forEach(game => {
+                if (!gameMap.has(game.game_name)) {
+                    gameMap.set(game.game_name, game);
+                }
+            });
+            currentGames = Array.from(gameMap.values());
+        }
 
         return { memberStats, currentGames };
     }
