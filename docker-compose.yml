@@ -15,6 +15,13 @@ services:
       - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
       - WEB_PORT=3000
       - DATABASE_PATH=/app/data/discord_stats.db
+      - DATABASE_TYPE=${DATABASE_TYPE}
+      - DATABASE_URL=${DATABASE_URL}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
       - NODE_ENV=${NODE_ENV:-production}
       - EVENT_NAME=${EVENT_NAME}
       - EVENT_START_DATE=${EVENT_START_DATE}

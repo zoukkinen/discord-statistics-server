@@ -44,12 +44,14 @@ export class WebServer {
                 
                 if (start && end) {
                     // Use date range query
-                    const history = await this.database.getMemberStatsHistoryByDateRange(start, end);
+                    const history = await this.database.getMemberStatsInRange(start, end);
                     res.json(history);
                 } else {
                     // Fallback to hours-based query
                     const hours = parseInt(req.query.hours as string) || 24;
-                    const history = await this.database.getMemberStatsHistory(hours);
+                    const endDate = new Date().toISOString();
+                    const startDate = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+                    const history = await this.database.getMemberStatsInRange(startDate, endDate);
                     res.json(history);
                 }
             } catch (error) {
@@ -61,7 +63,9 @@ export class WebServer {
         this.app.get('/api/game-history', async (req, res) => {
             try {
                 const hours = parseInt(req.query.hours as string) || 24;
-                const history = await this.database.getGameStatsHistory(hours);
+                const endDate = new Date().toISOString();
+                const startDate = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+                const history = await this.database.getGameStatsInRange(startDate, endDate);
                 res.json(history);
             } catch (error) {
                 console.error('Error fetching game history:', error);
@@ -77,12 +81,14 @@ export class WebServer {
                 
                 if (start && end) {
                     // Use date range query
-                    const topGames = await this.database.getTopGamesByDateRange(start, end, limit);
+                    const topGames = await this.database.getTopGamesInRange(start, end, limit);
                     res.json(topGames);
                 } else {
                     // Fallback to hours-based query
                     const hours = parseInt(req.query.hours as string) || 24;
-                    const topGames = await this.database.getTopGames(hours, limit);
+                    const endDate = new Date().toISOString();
+                    const startDate = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+                    const topGames = await this.database.getTopGamesInRange(startDate, endDate, limit);
                     res.json(topGames);
                 }
             } catch (error) {
@@ -94,8 +100,14 @@ export class WebServer {
         this.app.get('/api/recent-activity', async (req, res) => {
             try {
                 const limit = parseInt(req.query.limit as string) || 20;
-                const activity = await this.database.getRecentGameActivity(limit);
-                res.json(activity);
+                // Get activity from last 24 hours
+                const endDate = new Date().toISOString();
+                const startDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+                const activity = await this.database.getUserActivity(startDate, endDate);
+                
+                // Apply limit if specified (get most recent entries)
+                const limitedActivity = limit && limit > 0 ? activity.slice(-limit) : activity;
+                res.json(limitedActivity);
             } catch (error) {
                 console.error('Error fetching recent activity:', error);
                 res.status(500).json({ error: 'Failed to fetch recent activity' });

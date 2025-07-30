@@ -16,7 +16,15 @@
     "logs:heroku": "heroku logs --tail --app",
     "health:heroku": "curl -f"
   },
-  "keywords": ["discord", "bot", "activity", "tracker", "assembly", "gaming", "statistics"],
+  "keywords": [
+    "discord",
+    "bot",
+    "activity",
+    "tracker",
+    "assembly",
+    "gaming",
+    "statistics"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -25,10 +33,12 @@
     "npm": ">=10.x"
   },
   "dependencies": {
+    "@types/pg": "^8.15.5",
     "cors": "^2.8.5",
     "discord.js": "^14.21.0",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "pg": "^8.16.3",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
