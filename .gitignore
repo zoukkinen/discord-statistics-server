@@ -1,0 +1,22 @@
+node_modules/
+dist/
+docs/
+.env
+data/*.db
+*.log
+.DS_Store
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Logs
+logs/
+
+# Backups
+backups/
+
+# SSL certificates
+ssl/
+certbot/
+letsencrypt/

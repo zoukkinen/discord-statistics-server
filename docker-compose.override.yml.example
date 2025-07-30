@@ -1,0 +1,40 @@
+# Example Docker Compose override for development
+# Copy this to docker-compose.override.yml and customize as needed
+
+services:
+  discord-bot:
+    # Override the build context for development
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production  # Use production stage for faster builds
+    
+    # Mount source code for development (uncomment for live reloading)
+    # Note: On WSL, named volumes perform better than bind mounts
+    # volumes:
+    #   - ./src:/app/src:ro
+    #   - ./public:/app/public:ro
+    
+    # Environment overrides for development
+    environment:
+      - NODE_ENV=development
+      
+    # Enable development features
+    # Uncomment the line below if you want to use nodemon for development
+    # command: ["dumb-init", "npm", "run", "dev"]
+    
+    # WSL-specific optimizations (uncomment if using WSL)
+    # platform: linux/amd64
+    
+    # ARM64/Apple Silicon optimizations (uncomment if using Apple Silicon)
+    # platform: linux/arm64
+    
+  # Disable nginx in development
+  nginx:
+    profiles:
+      - disabled
+
+# WSL Performance optimizations
+# x-common-variables: &common-variables
+#   COMPOSE_DOCKER_CLI_BUILD: 1
+#   DOCKER_BUILDKIT: 1

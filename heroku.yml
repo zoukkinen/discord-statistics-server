@@ -1,0 +1,14 @@
+# Heroku container deployment configuration
+build:
+  docker:
+    web: Dockerfile
+
+run:
+  web: node dist/index.js
+
+# Release phase for any migrations or setup
+release:
+  image: web
+  command:
+    - echo "🚀 Assembly Discord Tracker releasing..."
+    - mkdir -p /app/data

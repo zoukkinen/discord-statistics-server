@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assembly Summer 2025 - Discord Activity Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #2d2d2d 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 10px;
+            margin: 0;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(0, 255, 157, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255, 102, 0, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 60%, rgba(0, 162, 255, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 255, 157, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 157, 0.1), transparent);
+            animation: shimmer 3s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 8px;
+            font-weight: 700;
+            background: linear-gradient(45deg, #00ff9d, #ff6600, #00a2ff);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 4s ease-in-out infinite;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .header p {
+            font-size: 1em;
+            opacity: 0.8;
+            margin: 0;
+            color: #00ff9d;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 12px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(0, 255, 157, 0.2);
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #00ff9d, #ff6600);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            border-color: rgba(0, 255, 157, 0.5);
+            box-shadow: 0 4px 20px rgba(0, 255, 157, 0.2);
+        }
+        
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-card h3 {
+            color: #00ff9d;
+            margin-bottom: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .big-number {
+            font-size: 2em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00ff9d, #00a2ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            margin: 5px 0;
+        }
+
+        .chart-container {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(0, 255, 157, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .chart-container:hover {
+            border-color: rgba(0, 255, 157, 0.4);
+            box-shadow: 0 4px 20px rgba(0, 255, 157, 0.1);
+        }
+
+        .chart-container h3 {
+            color: #00ff9d;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 250px;
+        }
+
+        /* iPad-specific layout adjustments */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .left-column {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .right-column {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .game-list {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .game-item {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #00ff9d;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .game-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 157, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .game-item:hover {
+            border-left-color: #ff6600;
+            background: rgba(0, 0, 0, 0.6);
+        }
+        
+        .game-item:hover::before {
+            left: 100%;
+        }
+
+        .game-name {
+            font-weight: 600;
+            color: #00ff9d;
+            margin-bottom: 3px;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .game-stats {
+            font-size: 0.8em;
+            opacity: 0.9;
+        }
+
+        .last-updated {
+            text-align: center;
+            opacity: 0.7;
+            margin-top: 10px;
+            font-size: 0.8em;
+        }
+
+        .loading {
+            text-align: center;
+            color: #00ff9d;
+            font-size: 1em;
+            margin: 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.8;
+        }
+
+        .error {
+            background: rgba(255, 87, 87, 0.2);
+            color: #ff6600;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #ff6600;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* iPad Portrait Optimizations */
+        @media (max-width: 1024px) and (orientation: portrait) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+            }
+            
+            .big-number {
+                font-size: 1.8em;
+            }
+            
+            .chart-wrapper {
+                height: 200px;
+            }
+            
+            .content-grid {
+                gap: 10px;
+            }
+            
+            .game-list {
+                max-height: 150px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .big-number {
+                font-size: 2em;
+            }
+            
+            .chart-wrapper {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Assembly Summer 2025</h1>
+            <p>Discord Activity Tracker • 31.07.—03.08.2025 • Messukeskus Helsinki</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>👥 Online</h3>
+                <div class="big-number" id="onlineMembers">-</div>
+                <p id="totalMembers">Total: -</p>
+            </div>
+            
+            <div class="stat-card">
+                <h3>🎮 Games</h3>
+                <div class="big-number" id="activeGames">-</div>
+                <p id="totalPlayers">Players: -</p>
+            </div>
+            
+            <div class="stat-card">
+                <h3>📊 Updated</h3>
+                <div id="lastUpdate" style="font-size: 0.9em; margin-top: 10px;">-</div>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <div class="left-column">
+                <div class="chart-container">
+                    <h3>📈 Member Activity (24h)</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="memberChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3>🎮 Currently Playing</h3>
+                    <div id="currentGames" class="game-list">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-column">
+                <div class="chart-container">
+                    <h3>🏆 Top Games (24h)</h3>
+                    <div id="topGames" class="game-list">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="last-updated">
+            Last updated: <span id="timestamp">-</span>
+        </div>
+    </div>
+
+    <script>
+        let memberChart;
+        
+        // Initialize the dashboard
+        async function init() {
+            await updateCurrentStats();
+            await updateMemberChart();
+            await updateCurrentGames();
+            await updateTopGames();
+            
+            // Auto-refresh every 30 seconds
+            setInterval(async () => {
+                await updateCurrentStats();
+                await updateCurrentGames();
+            }, 30000);
+            
+            // Update charts every 5 minutes
+            setInterval(async () => {
+                await updateMemberChart();
+                await updateTopGames();
+            }, 300000);
+        }
+
+        async function updateCurrentStats() {
+            try {
+                const response = await fetch('/api/current');
+                const data = await response.json();
+                
+                if (data.memberStats) {
+                    document.getElementById('onlineMembers').textContent = data.memberStats.online_members;
+                    document.getElementById('totalMembers').textContent = `Total: ${data.memberStats.total_members}`;
+                }
+                
+                document.getElementById('activeGames').textContent = data.currentGames.length;
+                const totalPlayers = data.currentGames.reduce((sum, game) => sum + game.player_count, 0);
+                document.getElementById('totalPlayers').textContent = `Players: ${totalPlayers}`;
+                
+                document.getElementById('lastUpdate').textContent = 
+                    data.memberStats ? new Date(data.memberStats.timestamp).toLocaleTimeString() : 'No data';
+                    
+                document.getElementById('timestamp').textContent = new Date().toLocaleString();
+                
+            } catch (error) {
+                console.error('Error updating current stats:', error);
+                showError('Failed to update current statistics');
+            }
+        }
+
+        async function updateMemberChart() {
+            try {
+                const response = await fetch('/api/member-history?hours=24');
+                const data = await response.json();
+                
+                const ctx = document.getElementById('memberChart').getContext('2d');
+                
+                if (memberChart) {
+                    memberChart.destroy();
+                }
+                
+                memberChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.map(item => new Date(item.timestamp).toLocaleTimeString()),
+                        datasets: [
+                            {
+                                label: 'Online Members',
+                                data: data.map(item => item.online_members),
+                                borderColor: '#00ff9d',
+                                backgroundColor: 'rgba(0, 255, 157, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                                borderWidth: 2
+                            },
+                            {
+                                label: 'Total Members',
+                                data: data.map(item => item.total_members),
+                                borderColor: '#ff6600',
+                                backgroundColor: 'rgba(255, 102, 0, 0.1)',
+                                tension: 0.4,
+                                fill: false,
+                                borderWidth: 2
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { 
+                                    color: '#ffffff',
+                                    font: { weight: 500 }
+                                },
+                                grid: { 
+                                    color: 'rgba(0, 255, 157, 0.2)',
+                                    borderColor: 'rgba(0, 255, 157, 0.3)'
+                                }
+                            },
+                            x: {
+                                ticks: { 
+                                    color: '#ffffff',
+                                    font: { weight: 500 }
+                                },
+                                grid: { 
+                                    color: 'rgba(0, 255, 157, 0.1)',
+                                    borderColor: 'rgba(0, 255, 157, 0.3)'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: { 
+                                labels: { 
+                                    color: '#ffffff',
+                                    font: { weight: 600 },
+                                    usePointStyle: true
+                                }
+                            }
+                        }
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Error updating member chart:', error);
+                showError('Failed to update member chart');
+            }
+        }
+
+        async function updateCurrentGames() {
+            try {
+                const response = await fetch('/api/current');
+                const data = await response.json();
+                
+                const container = document.getElementById('currentGames');
+                
+                if (data.currentGames.length === 0) {
+                    container.innerHTML = '<div class="loading">No one is currently playing any games</div>';
+                    return;
+                }
+                
+                container.innerHTML = data.currentGames.map(game => `
+                    <div class="game-item">
+                        <div class="game-name">${game.game_name}</div>
+                        <div class="game-stats">${game.player_count} player${game.player_count !== 1 ? 's' : ''}</div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Error updating current games:', error);
+                showError('Failed to update current games');
+            }
+        }
+
+        async function updateTopGames() {
+            try {
+                const response = await fetch('/api/top-games?hours=24&limit=10');
+                const data = await response.json();
+                
+                const container = document.getElementById('topGames');
+                
+                if (data.length === 0) {
+                    container.innerHTML = '<div class="loading">No game data available</div>';
+                    return;
+                }
+                
+                container.innerHTML = data.map(game => {
+                    const hours = Math.floor(game.total_playtime_minutes / 60);
+                    const minutes = game.total_playtime_minutes % 60;
+                    const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                    
+                    return `
+                        <div class="game-item">
+                            <div class="game-name">${game.game_name}</div>
+                            <div class="game-stats">
+                                ${timeStr} total playtime<br>
+                                ${game.unique_players} unique player${game.unique_players !== 1 ? 's' : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                console.error('Error updating top games:', error);
+                showError('Failed to update top games');
+            }
+        }
+
+        function showError(message) {
+            const existingError = document.querySelector('.error');
+            if (existingError) {
+                existingError.remove();
+            }
+            
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = message;
+            document.querySelector('.container').appendChild(errorDiv);
+            
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+
+        // Start the dashboard
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+{
+  "name": "assembly-discord-tracker",
+  "version": "1.0.0",
+  "description": "Discord activity tracker for Assembly Summer 2025 - monitors Discord server member count and game activity",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "nodemon src/index.ts",
+    "dev:build": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "node test/basic.test.js",
+    "heroku-prebuild": "echo '🔧 Heroku prebuild for Assembly Discord Tracker'",
+    "heroku-postbuild": "npm run build",
+    "deploy:heroku": "git push heroku main",
+    "logs:heroku": "heroku logs --tail --app",
+    "health:heroku": "curl -f"
+  },
+  "keywords": ["discord", "bot", "activity", "tracker", "assembly", "gaming", "statistics"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20.x",
+    "npm": ">=10.x"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "discord.js": "^14.21.0",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.1.0",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}

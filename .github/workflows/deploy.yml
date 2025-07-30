@@ -1,0 +1,116 @@
+name: 🚀 Deploy to Heroku
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Test job - runs on all pushes and PRs
+  test:
+    name: 🧪 Test Application
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🔧 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: 📦 Install dependencies
+      run: npm ci
+
+    - name: 🔨 Build application
+      run: npm run build
+
+    - name: ✅ Run tests (if any)
+      run: npm test --if-present
+
+    - name: 🔍 Lint code
+      run: npm run lint --if-present
+
+  # Build and test Docker image
+  docker-test:
+    name: 🐳 Test Docker Build
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🔧 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: 🐳 Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64
+        push: false
+        tags: assembly-discord-tracker:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Deploy job - only runs on main branch pushes
+  deploy:
+    name: 🚀 Deploy to Heroku
+    runs-on: ubuntu-latest
+    needs: [test, docker-test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🚀 Deploy to Heroku
+      uses: akhileshns/heroku-deploy@v3.12.14
+      with:
+        heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+        heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
+        heroku_email: ${{ secrets.HEROKU_EMAIL }}
+        usedocker: true
+        docker_heroku_process_type: web
+        healthcheck: "https://assembly.zoukkinen.com/api/health"
+        delay: 30
+        rollbackonhealthcheckfailed: true
+
+    - name: 🏥 Health Check
+      run: |
+        echo "🔍 Checking application health..."
+        sleep 30
+        curl -f https://assembly.zoukkinen.com/api/health || exit 1
+        echo "✅ Application is healthy!"
+
+    - name: 📊 Post-deployment notification
+      if: success()
+      run: |
+        echo "🎉 Deployment successful!"
+        echo "🌐 Application URL: https://assembly.zoukkinen.com"
+        echo "📊 Dashboard: https://assembly.zoukkinen.com"
+
+  # Notification job for deployment status
+  notify:
+    name: 📢 Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always() && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 📢 Deployment Success Notification
+      if: needs.deploy.result == 'success'
+      run: |
+        echo "🎉 Assembly Discord Tracker deployed successfully!"
+        echo "🌐 Live at: https://assembly.zoukkinen.com"
+        
+    - name: 📢 Deployment Failure Notification
+      if: needs.deploy.result == 'failure'
+      run: |
+        echo "❌ Deployment failed!"
+        echo "Please check the logs and try again."
+        exit 1
