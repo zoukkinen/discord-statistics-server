@@ -490,12 +490,11 @@
             <div class="stat-card">
                 <h3>🎮 Games</h3>
                 <div class="big-number" id="activeGames">-</div>
-                <p id="totalPlayers">Players: -</p>
             </div>
             
             <div class="stat-card">
-                <h3>📊 Updated</h3>
-                <div id="lastUpdate" style="font-size: 0.9em; margin-top: 10px;">-</div>
+                <h3>� Players</h3>
+                <div class="big-number" id="totalPlayers">-</div>
             </div>
         </div>
 
@@ -593,7 +592,14 @@
         function updateTimestamp() {
             const timestamp = document.getElementById('timestamp');
             if (timestamp) {
-                timestamp.textContent = new Date().toLocaleTimeString();
+                // Finnish time (24-hour format)
+                timestamp.textContent = new Date().toLocaleTimeString('fi-FI', {
+                    timeZone: 'Europe/Helsinki',
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
                 timestamp.parentElement.classList.add('pulse');
                 setTimeout(() => {
                     timestamp.parentElement.classList.remove('pulse');
@@ -616,10 +622,7 @@
                 
                 document.getElementById('activeGames').textContent = data.currentGames.length;
                 const totalPlayers = data.currentGames.reduce((sum, game) => sum + game.player_count, 0);
-                document.getElementById('totalPlayers').textContent = `Players: ${totalPlayers}`;
-                
-                document.getElementById('lastUpdate').textContent = 
-                    data.memberStats ? new Date(data.memberStats.timestamp).toLocaleTimeString() : 'No data';
+                document.getElementById('totalPlayers').textContent = totalPlayers;
                     
                 updateTimestamp();
                 
