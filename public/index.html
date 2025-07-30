@@ -649,7 +649,12 @@
                 memberChart = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: data.map(item => new Date(item.timestamp).toLocaleTimeString()),
+                        labels: data.map(item => new Date(item.timestamp).toLocaleTimeString('fi-FI', {
+                            timeZone: 'Europe/Helsinki',
+                            hour12: false,
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })),
                         datasets: [
                             {
                                 label: 'Online Members',
