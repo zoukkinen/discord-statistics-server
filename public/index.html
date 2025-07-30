@@ -113,12 +113,12 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 10px;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
 
         .stat-card {
             background: rgba(0, 0, 0, 0.6);
-            padding: 15px;
+            padding: 10px;
             border-radius: 12px;
             backdrop-filter: blur(15px);
             border: 1px solid rgba(0, 255, 157, 0.2);
@@ -151,22 +151,22 @@
 
         .stat-card h3 {
             color: #00ff9d;
-            margin-bottom: 8px;
-            font-size: 1em;
+            margin-bottom: 5px;
+            font-size: 0.9em;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
 
         .big-number {
-            font-size: 2em;
+            font-size: 1.8em;
             font-weight: 700;
             background: linear-gradient(135deg, #00ff9d, #00a2ff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             text-align: center;
-            margin: 5px 0;
+            margin: 3px 0;
         }
 
         .chart-container {
@@ -216,41 +216,35 @@
             flex-direction: column;
         }
 
-        /* New side-by-side layout for Currently Playing and Recent Activity */
-        .side-by-side-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 15px;
-        }
-
         /* Full height container for Top Games */
         .chart-container.full-height {
-            height: calc(100vh - 200px);
-            min-height: 500px;
+            height: calc(100vh - 300px);
+            min-height: 400px;
+            max-height: 600px;
         }
 
         /* Expanded game list for Top Games */
         .game-list.expanded {
             max-height: none;
             height: calc(100% - 60px);
-            gap: 4px;
+            gap: 2px;
+            overflow-y: auto;
         }
 
         /* Compact game items for Top Games list */
         .game-list.expanded .game-item {
-            padding: 6px 8px;
-            font-size: 0.85em;
+            padding: 4px 6px;
+            font-size: 0.8em;
         }
 
         .game-list.expanded .game-name {
-            font-size: 0.8em;
-            margin-bottom: 2px;
+            font-size: 0.75em;
+            margin-bottom: 1px;
         }
 
         .game-list.expanded .game-stats {
-            font-size: 0.7em;
-            line-height: 1.2;
+            font-size: 0.65em;
+            line-height: 1.1;
         }
 
         .game-list {
@@ -303,69 +297,6 @@
         .game-stats {
             font-size: 0.8em;
             opacity: 0.9;
-        }
-
-        .activity-feed {
-            max-height: 300px;
-            overflow-y: auto;
-            padding: 10px 0;
-        }
-
-        .activity-item {
-            display: flex;
-            align-items: center;
-            padding: 8px 12px;
-            margin: 5px 0;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            border-left: 3px solid transparent;
-            transition: all 0.3s ease;
-            font-size: 0.85em;
-        }
-
-        .activity-item.started {
-            border-left-color: #00ff9d;
-        }
-
-        .activity-item.stopped {
-            border-left-color: #ff6b6b;
-        }
-
-        .activity-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: translateX(2px);
-        }
-
-        .activity-icon {
-            margin-right: 8px;
-            font-size: 1.1em;
-        }
-
-        .activity-details {
-            flex: 1;
-        }
-
-        .activity-user {
-            font-weight: 600;
-            color: #00ff9d;
-            font-size: 0.9em;
-        }
-
-        .activity-game {
-            margin: 2px 0;
-            opacity: 0.9;
-        }
-
-        .activity-time {
-            font-size: 0.75em;
-            opacity: 0.6;
-            margin-top: 2px;
-        }
-
-        .activity-duration {
-            font-size: 0.75em;
-            color: #ffd700;
-            margin-left: 8px;
         }
 
         .last-updated {
@@ -479,34 +410,53 @@
             }
             
             .chart-wrapper {
-                height: 200px;
+                height: 150px;
             }
             
             .content-grid {
-                gap: 10px;
+                gap: 8px;
             }
             
-            .side-by-side-grid {
-                gap: 10px;
+            .left-column .chart-container {
+                padding: 10px;
+                margin-bottom: 8px;
+            }
+            
+            .left-column .chart-container h3 {
+                font-size: 0.9em;
+                margin-bottom: 8px;
             }
             
             .game-list {
-                max-height: 150px;
+                max-height: 120px;
+                gap: 4px;
+            }
+            
+            .game-list .game-item {
+                padding: 6px 8px;
+                font-size: 0.75em;
+            }
+            
+            .game-list .game-name {
+                font-size: 0.7em;
+                margin-bottom: 2px;
+            }
+            
+            .game-list .game-stats {
+                font-size: 0.6em;
+                line-height: 1.1;
             }
             
             .chart-container.full-height {
-                min-height: 400px;
+                height: 450px;
+                min-height: 350px;
+                max-height: 450px;
             }
         }
 
         @media (max-width: 768px) {
             .content-grid {
                 grid-template-columns: 1fr;
-            }
-            
-            .side-by-side-grid {
-                grid-template-columns: 1fr;
-                gap: 10px;
             }
             
             .chart-container.full-height {
@@ -550,11 +500,13 @@
             <div class="stat-card">
                 <h3>🎮 Games</h3>
                 <div class="big-number" id="activeGames">-</div>
+                <p id="totalGames">Total: -</p>
             </div>
             
             <div class="stat-card">
                 <h3>🎯 Players</h3>
                 <div class="big-number" id="totalPlayers">-</div>
+                <p id="uniquePlayers">Total: -</p>
             </div>
         </div>
 
@@ -567,27 +519,18 @@
                     </div>
                 </div>
 
-                <!-- Side-by-side layout for Currently Playing and Recent Activity -->
-                <div class="side-by-side-grid">
-                    <div class="chart-container">
-                        <h3>🎮 Currently Playing</h3>
-                        <div id="currentGames" class="game-list">
-                            <div class="loading">Loading...</div>
-                        </div>
-                    </div>
-                    
-                    <div class="chart-container">
-                        <h3>� Recent Activity</h3>
-                        <div id="recentActivity" class="activity-feed">
-                            <div class="loading">Loading...</div>
-                        </div>
+                <!-- Currently Playing section taking full width -->
+                <div class="chart-container">
+                    <h3>🎮 Currently Playing</h3>
+                    <div id="currentGames" class="game-list">
+                        <div class="loading">Loading...</div>
                     </div>
                 </div>
             </div>
 
             <div class="right-column">
                 <div class="chart-container full-height">
-                    <h3>� Top Games (Assembly 2025)</h3>
+                    <h3>🏆 Top Games (Assembly 2025)</h3>
                     <div id="topGames" class="game-list expanded">
                         <div class="loading">Loading...</div>
                     </div>
@@ -609,13 +552,11 @@
             await updateMemberChart();
             await updateCurrentGames();
             await updateTopGames();
-            await updateRecentActivity();
             
             // Auto-refresh current stats every 15 seconds (improved responsiveness)
             setInterval(async () => {
                 await updateCurrentStats();
                 await updateCurrentGames();
-                await updateRecentActivity(); // Update activity feed frequently
             }, 15000);
             
             // Update charts every 2 minutes (matches data collection frequency)
@@ -683,9 +624,23 @@
                     document.getElementById('totalMembers').textContent = `Total: ${data.memberStats.total_members}`;
                 }
                 
+                // Current games being played right now
                 document.getElementById('activeGames').textContent = data.currentGames.length;
+                
+                // Get total unique games for Assembly timeframe
+                const eventStart = '2025-07-30T00:00:00Z';
+                const eventEnd = '2025-08-03T23:59:59Z';
+                const topGamesResponse = await fetch(`/api/top-games?start=${eventStart}&end=${eventEnd}&limit=100`);
+                const topGamesData = await topGamesResponse.json();
+                document.getElementById('totalGames').textContent = `Total: ${topGamesData.length}`;
+                
+                // Current active players
                 const totalPlayers = data.currentGames.reduce((sum, game) => sum + game.player_count, 0);
                 document.getElementById('totalPlayers').textContent = totalPlayers;
+                
+                // Get total unique players for Assembly timeframe
+                const totalUniquePlayers = topGamesData.reduce((sum, game) => sum + game.unique_players, 0);
+                document.getElementById('uniquePlayers').textContent = `Total: ${totalUniquePlayers}`;
                     
                 updateTimestamp();
                 
@@ -843,8 +798,7 @@
                         <div class="game-item">
                             <div class="game-name">${game.game_name}</div>
                             <div class="game-stats">
-                                ${timeStr} total playtime<br>
-                                ${game.unique_players} unique player${game.unique_players !== 1 ? 's' : ''}
+                                ${timeStr} • ${game.unique_players} player${game.unique_players !== 1 ? 's' : ''}
                             </div>
                         </div>
                     `;
@@ -855,59 +809,6 @@
             } catch (error) {
                 console.error('Error updating top games:', error);
                 showError('Failed to update top games');
-            }
-        }
-
-        async function updateRecentActivity() {
-            const container = document.getElementById('recentActivity');
-            addRefreshAnimation(container.parentElement);
-            
-            try {
-                const response = await fetch('/api/recent-activity?limit=15');
-                const data = await response.json();
-                
-                const container = document.getElementById('recentActivity');
-                
-                if (data.length === 0) {
-                    container.innerHTML = '<div class="loading">No recent activity</div>';
-                    return;
-                }
-                
-                container.innerHTML = data.map(activity => {
-                    const timeAgo = getTimeAgo(activity.timestamp);
-                    const icon = activity.action === 'started' ? '▶️' : '⏹️';
-                    const actionText = activity.action === 'started' ? 'started playing' : 'stopped playing';
-                    const userId = activity.user_id.slice(-4); // Show last 4 chars of user ID
-                    
-                    let durationText = '';
-                    if (activity.action === 'stopped' && activity.session_duration) {
-                        const hours = Math.floor(activity.session_duration / 60);
-                        const minutes = Math.round(activity.session_duration % 60);
-                        if (hours > 0) {
-                            durationText = `<span class="activity-duration">${hours}h ${minutes}m</span>`;
-                        } else {
-                            durationText = `<span class="activity-duration">${minutes}m</span>`;
-                        }
-                    }
-                    
-                    return `
-                        <div class="activity-item ${activity.action}">
-                            <span class="activity-icon">${icon}</span>
-                            <div class="activity-details">
-                                <div class="activity-user">User ...${userId}</div>
-                                <div class="activity-game">${actionText} ${activity.game_name}</div>
-                                <div class="activity-time">${timeAgo}</div>
-                            </div>
-                            ${durationText}
-                        </div>
-                    `;
-                }).join('');
-                
-                highlightNewContent(container);
-                
-            } catch (error) {
-                console.error('Error updating recent activity:', error);
-                showError('Failed to update recent activity');
             }
         }
 
