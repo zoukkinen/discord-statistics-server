@@ -16,6 +16,11 @@ services:
       - WEB_PORT=3000
       - DATABASE_PATH=/app/data/discord_stats.db
       - NODE_ENV=${NODE_ENV:-production}
+      - EVENT_NAME=${EVENT_NAME}
+      - EVENT_START_DATE=${EVENT_START_DATE}
+      - EVENT_END_DATE=${EVENT_END_DATE}
+      - EVENT_TIMEZONE=${EVENT_TIMEZONE}
+      - EVENT_DESCRIPTION=${EVENT_DESCRIPTION}
     volumes:
       - discord_data:/app/data
       # WSL compatibility: Use named volume instead of bind mount for better performance

@@ -1,11 +1,11 @@
-# 🎮 Assembly Summer 2025 - Discord Activity Tracker
+# 🎮 Discord Activity Tracker
 
 [![Deploy to Heroku](https://github.com/zoukkinen/discord-statistics-server/actions/workflows/deploy.yml/badge.svg)](https://github.com/zoukkinen/discord-statistics-server/actions/workflows/deploy.yml)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
 [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
 
-A Discord bot that monitors your Discord server's member activity and tracks what games users are playing. Perfect for Assembly summer 2025 events to keep track of your community's gaming activity!
+A Discord bot that monitors your Discord server's member activity and tracks what games users are playing. Perfect for gaming events, competitions, or community monitoring to keep track of your Discord community's gaming activity!
 
 ## ✨ Features
 
@@ -151,6 +151,39 @@ make clean             # Clean up (destructive)
    WEB_PORT=3000
    DATABASE_PATH=./data/discord_stats.db
    ```
+
+## 🎯 Event Configuration
+
+This tracker can be easily configured for any event! By default, it's set up for Assembly Summer 2025, but you can customize it for your own event by adding these environment variables to your `.env` file:
+
+```env
+# Event Configuration
+EVENT_NAME=Your Event Name 2025
+EVENT_START_DATE=2025-12-01T09:00:00Z
+EVENT_END_DATE=2025-12-05T18:00:00Z
+EVENT_TIMEZONE=Europe/London
+EVENT_DESCRIPTION=Discord activity tracking for Your Event Name 2025
+```
+
+### Event Configuration Options
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `EVENT_NAME` | Name of your event | `"GameJam 2025"` |
+| `EVENT_START_DATE` | Event start date and time (ISO 8601) | `"2025-12-01T09:00:00Z"` |
+| `EVENT_END_DATE` | Event end date and time (ISO 8601) | `"2025-12-05T18:00:00Z"` |
+| `EVENT_TIMEZONE` | Timezone for date display | `"Europe/London"`, `"America/New_York"` |
+| `EVENT_DESCRIPTION` | Brief description of your event | `"Gaming competition tracking"` |
+
+### Popular Timezone Examples
+- `Europe/London` (GMT/BST)
+- `Europe/Helsinki` (EET/EEST) 
+- `America/New_York` (EST/EDT)
+- `America/Los_Angeles` (PST/PDT)
+- `Asia/Tokyo` (JST)
+- `Australia/Sydney` (AEST/AEDT)
+
+**Note:** The dashboard will automatically update its title, dates, and all references to use your configured event details!
 
 4. **Build the project:**
    ```bash

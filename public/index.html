@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assembly Summer 2025 - Discord Activity Tracker</title>
+    <title id="pageTitle">Discord Activity Tracker</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -635,8 +635,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎮 Assembly Summer 2025</h1>
-            <p>Discord Activity Tracker • 31.07 — 03.08.2025 • Messukeskus Helsinki</p>
+            <h1 id="eventTitle">🎮 Discord Activity Tracker</h1>
+            <p id="eventSubtitle">Loading event information...</p>
         </div>
 
         <div class="stats-grid">
@@ -662,7 +662,7 @@
         <div class="content-grid">
             <div class="left-column">
                 <div class="chart-container">
-                    <h3>📈 Member Activity (Assembly 2025)</h3>
+                    <h3 id="memberActivityTitle">📈 Member Activity</h3>
                     <div class="chart-wrapper">
                         <canvas id="memberChart"></canvas>
                     </div>
@@ -687,7 +687,7 @@
 
             <div class="right-column">
                 <div class="chart-container full-height">
-                    <h3>🏆 Top Games (Assembly 2025)</h3>
+                    <h3 id="topGamesTitle">🏆 Top Games</h3>
                     <div id="topGames" class="game-list expanded">
                         <div class="loading">Loading...</div>
                     </div>
@@ -700,7 +700,7 @@
         </div>
 
         <div class="footer-info">
-            <p>Event Period: July 31, 2025 10:00 - August 3, 2025 16:00 (Helsinki Time)</p>
+            <p id="footerEventPeriod">Loading event period...</p>
             <button class="info-button" onclick="openModal()">How does this work?</button>
         </div>
 
@@ -708,7 +708,7 @@
         <div id="infoModal" class="modal">
             <div class="modal-content">
                 <span class="close" onclick="closeModal()">&times;</span>
-                <h2>🎮 Assembly Summer 2025 Discord Activity Tracker</h2>
+                <h2 id="modalTitle">🎮 Discord Activity Tracker</h2>
                 
                 <div class="modal-section">
                     <h3>📊 What We Track</h3>
@@ -716,14 +716,14 @@
                         <li><strong>Discord Server Activity:</strong> Number of online members and total server members</li>
                         <li><strong>Game Activity:</strong> What games Discord users are currently playing</li>
                         <li><strong>Historical Data:</strong> Member count trends and game popularity over time</li>
-                        <li><strong>Statistics:</strong> Total unique games played and player counts during Assembly 2025</li>
+                        <li><strong>Statistics:</strong> Total unique games played and player counts during the event</li>
                     </ul>
                 </div>
 
                 <div class="modal-section">
                     <h3>🔍 How It Works</h3>
                     <ul>
-                        <li>The bot monitors the Assembly Discord server every 2 minutes</li>
+                        <li>The bot monitors the Discord server every 2 minutes</li>
                         <li>Only public Discord activity is tracked (games shown in user status)</li>
                         <li>No personal messages, conversations, or private data is collected</li>
                         <li>Data is aggregated and anonymized for statistical purposes</li>
@@ -733,9 +733,8 @@
 
                 <div class="modal-section">
                     <h3>⏰ Event Timeframe</h3>
-                    <p>Data collection is limited to the official Assembly Summer 2025 event period:</p>
-                    <p><strong>Start:</strong> July 31, 2025 at 10:00 (Helsinki Time)<br>
-                    <strong>End:</strong> August 3, 2025 at 16:00 (Helsinki Time)</p>
+                    <p id="eventTimeframeDescription">Data collection is limited to the event period:</p>
+                    <p id="eventTimeframeDates"><strong>Loading event dates...</strong></p>
                 </div>
 
                 <div class="modal-section">
@@ -743,13 +742,13 @@
                     <ul>
                         <li>No usernames or personal identifiers are stored</li>
                         <li>Only public Discord "Playing" status is tracked</li>
-                        <li>Data is used solely for Assembly event statistics</li>
+                        <li>Data is used solely for event statistics</li>
                         <li>All data is automatically deleted after the event</li>
                     </ul>
                 </div>
 
                 <div class="modal-footer">
-                    <p>Made with ❤️ for Assembly Summer 2025 community</p>
+                    <p id="modalFooterText">Made with ❤️ for the community</p>
                     <p><a href="https://github.com/zoukkinen" target="_blank" rel="noopener noreferrer">🔗 GitHub: @zoukkinen</a></p>
                     <p><a href="https://github.com/zoukkinen/discord-statistics-server" target="_blank" rel="noopener noreferrer">📂 View Source Code</a></p>
                 </div>
@@ -759,9 +758,97 @@
 
     <script>
         let memberChart;
+        let eventConfig = null;
+        
+        // Load event configuration from API
+        async function loadEventConfig() {
+            try {
+                const response = await fetch('/api/config');
+                eventConfig = await response.json();
+                
+                // Update page elements with configuration
+                updatePageWithConfig();
+                
+            } catch (error) {
+                console.error('Error loading event config:', error);
+                // Use fallback values
+                eventConfig = {
+                    event: {
+                        name: 'Assembly Summer 2025',
+                        startDate: '2025-07-31T07:00:00Z',
+                        endDate: '2025-08-03T13:00:00Z',
+                        timezone: 'Europe/Helsinki',
+                        description: 'Discord activity tracking for Assembly Summer 2025'
+                    },
+                    isEventActive: false,
+                    hasEventStarted: false
+                };
+                updatePageWithConfig();
+            }
+        }
+
+        // Update page elements with loaded configuration
+        function updatePageWithConfig() {
+            const config = eventConfig.event;
+            
+            // Update page title
+            document.getElementById('pageTitle').textContent = `${config.name} - Discord Activity Tracker`;
+            
+            // Update header
+            document.getElementById('eventTitle').textContent = `🎮 ${config.name}`;
+            
+            // Format dates for display
+            const startDate = new Date(config.startDate);
+            const endDate = new Date(config.endDate);
+            const formatter = new Intl.DateTimeFormat('en-GB', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric',
+                timeZone: config.timezone
+            });
+            
+            const startFormatted = formatter.format(startDate);
+            const endFormatted = formatter.format(endDate);
+            document.getElementById('eventSubtitle').textContent = 
+                `Discord Activity Tracker • ${startFormatted} — ${endFormatted}`;
+            
+            // Update section titles
+            document.getElementById('memberActivityTitle').textContent = `📈 Member Activity (${config.name})`;
+            document.getElementById('topGamesTitle').textContent = `🏆 Top Games (${config.name})`;
+            
+            // Update modal content
+            document.getElementById('modalTitle').textContent = `🎮 ${config.name} Discord Activity Tracker`;
+            document.getElementById('eventTimeframeDescription').textContent = 
+                `Data collection is limited to the official ${config.name} event period:`;
+            
+            // Format time display for modal
+            const timeFormatter = new Intl.DateTimeFormat('en-GB', { 
+                day: 'numeric',
+                month: 'long', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZoneName: 'short',
+                timeZone: config.timezone
+            });
+            
+            document.getElementById('eventTimeframeDates').innerHTML = 
+                `<strong>Start:</strong> ${timeFormatter.format(startDate)}<br>` +
+                `<strong>End:</strong> ${timeFormatter.format(endDate)}`;
+            
+            document.getElementById('modalFooterText').textContent = 
+                `Made with ❤️ for ${config.name} community`;
+            
+            // Update footer
+            document.getElementById('footerEventPeriod').textContent = 
+                `Event Period: ${timeFormatter.format(startDate)} - ${timeFormatter.format(endDate)}`;
+        }
         
         // Initialize the dashboard
         async function init() {
+            // Load configuration first
+            await loadEventConfig();
+            
             // Check if recent activity should be shown
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('activity') === 'show') {
@@ -857,24 +944,26 @@
                 // Current games being played right now
                 document.getElementById('activeGames').textContent = data.currentGames.length;
                 
-                // Get total unique games for Assembly timeframe (fallback to recent data if Assembly hasn't started)
-                const eventStart = '2025-07-31T07:00:00Z'; // 10:00 Finnish time (UTC+3)
-                const eventEnd = '2025-08-03T13:00:00Z';   // 16:00 Finnish time (UTC+3)
-                const now = new Date();
-                const assemblyStart = new Date(eventStart);
+                // Get total unique games for event timeframe (fallback to recent data if event hasn't started)
+                if (!eventConfig) return; // Config not loaded yet
                 
-                if (now >= assemblyStart) {
-                    // Assembly has started - get Assembly timeframe data
+                const eventStart = eventConfig.event.startDate;
+                const eventEnd = eventConfig.event.endDate;
+                const now = new Date();
+                const eventStartDate = new Date(eventStart);
+                
+                if (now >= eventStartDate) {
+                    // Event has started - get event timeframe data
                     const topGamesResponse = await fetch(`/api/top-games?start=${eventStart}&end=${eventEnd}&limit=100`);
                     const topGamesData = await topGamesResponse.json();
                     
                     document.getElementById('totalGames').textContent = `Total: ${topGamesData.length}`;
                     
-                    // Get total unique players for Assembly timeframe
+                    // Get total unique players for event timeframe
                     const totalUniquePlayers = topGamesData.reduce((sum, game) => sum + game.unique_players, 0);
                     document.getElementById('uniquePlayers').textContent = `Total: ${totalUniquePlayers}`;
                 } else {
-                    // Assembly hasn't started yet - show zero for Assembly totals
+                    // Event hasn't started yet - show zero for event totals
                     document.getElementById('totalGames').textContent = `Total: 0`;
                     document.getElementById('uniquePlayers').textContent = `Total: 0`;
                 }
@@ -896,18 +985,20 @@
             addRefreshAnimation(chartContainer);
             
             try {
-                // Assembly Summer 2025 event period: 31.07.2025 10:00 - 03.08.2025 16:00
-                const eventStart = '2025-07-31T07:00:00Z'; // 10:00 Finnish time (UTC+3)
-                const eventEnd = '2025-08-03T13:00:00Z';   // 16:00 Finnish time (UTC+3)
+                if (!eventConfig) return; // Config not loaded yet
+                
+                // Use configured event period
+                const eventStart = eventConfig.event.startDate;
+                const eventEnd = eventConfig.event.endDate;
                 const now = new Date();
-                const assemblyStart = new Date(eventStart);
+                const eventStartDate = new Date(eventStart);
                 
                 let response;
-                if (now >= assemblyStart) {
-                    // Assembly has started - use Assembly timeframe
+                if (now >= eventStartDate) {
+                    // Event has started - use event timeframe
                     response = await fetch(`/api/member-history?start=${eventStart}&end=${eventEnd}`);
                 } else {
-                    // Assembly hasn't started yet - show recent data (last 24 hours)
+                    // Event hasn't started yet - show recent data (last 24 hours)
                     response = await fetch(`/api/member-history?hours=24`);
                 }
                 
@@ -1028,21 +1119,33 @@
             addRefreshAnimation(container.parentElement);
             
             try {
-                // Assembly Summer 2025 event period: 31.07.2025 10:00 - 03.08.2025 16:00
-                const eventStart = '2025-07-31T07:00:00Z'; // 10:00 Finnish time (UTC+3)
-                const eventEnd = '2025-08-03T13:00:00Z';   // 16:00 Finnish time (UTC+3)
+                if (!eventConfig) return; // Config not loaded yet
+                
+                // Use configured event period
+                const eventStart = eventConfig.event.startDate;
+                const eventEnd = eventConfig.event.endDate;
                 const now = new Date();
-                const assemblyStart = new Date(eventStart);
+                const eventStartDate = new Date(eventStart);
                 
                 const container = document.getElementById('topGames');
                 
-                if (now < assemblyStart) {
-                    // Assembly hasn't started yet - show waiting message
-                    container.innerHTML = '<div class="loading">Assembly 2025 starts July 31, 2025 at 10:00<br>Top Games will appear during the event</div>';
+                if (now < eventStartDate) {
+                    // Event hasn't started yet - show waiting message
+                    const eventName = eventConfig.event.name;
+                    const startFormatter = new Intl.DateTimeFormat('en-GB', { 
+                        day: 'numeric',
+                        month: 'long', 
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        timeZone: eventConfig.event.timezone
+                    });
+                    const startDateFormatted = startFormatter.format(eventStartDate);
+                    container.innerHTML = `<div class="loading">${eventName} starts ${startDateFormatted}<br>Top Games will appear during the event</div>`;
                     return;
                 }
                 
-                // Assembly has started - get Assembly timeframe data
+                // Event has started - get event timeframe data
                 const response = await fetch(`/api/top-games?start=${eventStart}&end=${eventEnd}&limit=10`);
                 const data = await response.json();
                 

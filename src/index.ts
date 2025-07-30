@@ -1,7 +1,9 @@
 import { DiscordActivityBot } from './bot';
+import { Config } from './config';
 
-console.log('🚀 Starting Discord Activity Tracker for Assembly Summer 2025...');
-console.log('📅 July 30, 2025');
+const eventConfig = Config.getEventConfig();
+console.log(`🚀 Starting Discord Activity Tracker for ${eventConfig.name}...`);
+console.log(`📅 ${new Date().toLocaleDateString()}`);
 
 const bot = new DiscordActivityBot();
 

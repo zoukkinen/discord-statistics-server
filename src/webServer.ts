@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { Database } from './database';
+import { Config } from './config';
 
 export class WebServer {
     private app: express.Application;
@@ -108,6 +109,21 @@ export class WebServer {
                 timestamp: new Date().toISOString(),
                 uptime: process.uptime()
             });
+        });
+
+        // Event configuration endpoint
+        this.app.get('/api/config', (req, res) => {
+            try {
+                const config = Config.getEventConfig();
+                res.json({
+                    event: config,
+                    isEventActive: Config.isEventActive(),
+                    hasEventStarted: Config.hasEventStarted()
+                });
+            } catch (error) {
+                console.error('Error fetching config:', error);
+                res.status(500).json({ error: 'Failed to fetch config' });
+            }
         });
 
         // Serve the main dashboard page
