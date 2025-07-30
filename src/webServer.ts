@@ -12,7 +12,7 @@ export class WebServer {
     constructor(database: Database) {
         this.app = express();
         this.database = database;
-        this.port = parseInt(process.env.WEB_PORT || '3000');
+        this.port = parseInt(process.env.PORT || process.env.WEB_PORT || '3000');
         
         this.setupMiddleware();
         this.setupRoutes();
