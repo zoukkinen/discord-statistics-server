@@ -501,7 +501,7 @@
         <div class="content-grid">
             <div class="left-column">
                 <div class="chart-container">
-                    <h3>📈 Member Activity (24h)</h3>
+                    <h3>📈 Member Activity (Assembly 2025)</h3>
                     <div class="chart-wrapper">
                         <canvas id="memberChart"></canvas>
                     </div>
@@ -517,7 +517,7 @@
 
             <div class="right-column">
                 <div class="chart-container">
-                    <h3>🏆 Top Games (24h)</h3>
+                    <h3>🏆 Top Games (Assembly 2025)</h3>
                     <div id="topGames" class="game-list">
                         <div class="loading">Loading...</div>
                     </div>
@@ -637,7 +637,10 @@
             addRefreshAnimation(chartContainer);
             
             try {
-                const response = await fetch('/api/member-history?hours=24');
+                // Assembly Summer 2025 event period: 30.07.2025 - 03.08.2025
+                const eventStart = '2025-07-30T00:00:00Z';
+                const eventEnd = '2025-08-03T23:59:59Z';
+                const response = await fetch(`/api/member-history?start=${eventStart}&end=${eventEnd}`);
                 const data = await response.json();
                 
                 const ctx = document.getElementById('memberChart').getContext('2d');
@@ -755,7 +758,10 @@
             addRefreshAnimation(container.parentElement);
             
             try {
-                const response = await fetch('/api/top-games?hours=24&limit=10');
+                // Assembly Summer 2025 event period: 30.07.2025 - 03.08.2025
+                const eventStart = '2025-07-30T00:00:00Z';
+                const eventEnd = '2025-08-03T23:59:59Z';
+                const response = await fetch(`/api/top-games?start=${eventStart}&end=${eventEnd}&limit=10`);
                 const data = await response.json();
                 
                 const container = document.getElementById('topGames');
