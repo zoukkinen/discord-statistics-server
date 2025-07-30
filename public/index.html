@@ -526,6 +526,14 @@
                         <div class="loading">Loading...</div>
                     </div>
                 </div>
+
+                <!-- Recent Activity section - only shown with ?activity=show parameter -->
+                <div class="chart-container" id="recentActivityContainer" style="display: none;">
+                    <h3>📊 Recent Activity</h3>
+                    <div id="recentActivity" class="game-list">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
             </div>
 
             <div class="right-column">
@@ -548,15 +556,31 @@
         
         // Initialize the dashboard
         async function init() {
+            // Check if recent activity should be shown
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('activity') === 'show') {
+                document.getElementById('recentActivityContainer').style.display = 'block';
+            }
+            
             await updateCurrentStats();
             await updateMemberChart();
             await updateCurrentGames();
             await updateTopGames();
             
+            // Update recent activity if visible
+            if (urlParams.get('activity') === 'show') {
+                await updateRecentActivity();
+            }
+            
             // Auto-refresh current stats every 15 seconds (improved responsiveness)
             setInterval(async () => {
                 await updateCurrentStats();
                 await updateCurrentGames();
+                
+                // Update recent activity if visible
+                if (urlParams.get('activity') === 'show') {
+                    await updateRecentActivity();
+                }
             }, 15000);
             
             // Update charts every 2 minutes (matches data collection frequency)
@@ -809,6 +833,36 @@
             } catch (error) {
                 console.error('Error updating top games:', error);
                 showError('Failed to update top games');
+            }
+        }
+
+        async function updateRecentActivity() {
+            const container = document.getElementById('recentActivity');
+            addRefreshAnimation(container.parentElement);
+            
+            try {
+                const response = await fetch('/api/recent-activity?limit=5');
+                const data = await response.json();
+                
+                if (data.length === 0) {
+                    container.innerHTML = '<div class="loading">No recent activity</div>';
+                    return;
+                }
+                
+                container.innerHTML = data.map(activity => `
+                    <div class="game-item">
+                        <div class="game-name">${activity.game_name}</div>
+                        <div class="game-stats">
+                            ${activity.player_count} player${activity.player_count !== 1 ? 's' : ''} • ${getTimeAgo(activity.timestamp)}
+                        </div>
+                    </div>
+                `).join('');
+                
+                highlightNewContent(container);
+                
+            } catch (error) {
+                console.error('Error updating recent activity:', error);
+                showError('Failed to update recent activity');
             }
         }
 
