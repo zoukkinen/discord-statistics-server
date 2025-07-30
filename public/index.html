@@ -856,20 +856,31 @@
                 // Current games being played right now
                 document.getElementById('activeGames').textContent = data.currentGames.length;
                 
-                // Get total unique games for Assembly timeframe
+                // Get total unique games for Assembly timeframe (fallback to recent data if Assembly hasn't started)
                 const eventStart = '2025-07-31T07:00:00Z'; // 10:00 Finnish time (UTC+3)
                 const eventEnd = '2025-08-03T13:00:00Z';   // 16:00 Finnish time (UTC+3)
-                const topGamesResponse = await fetch(`/api/top-games?start=${eventStart}&end=${eventEnd}&limit=100`);
-                const topGamesData = await topGamesResponse.json();
-                document.getElementById('totalGames').textContent = `Total: ${topGamesData.length}`;
+                const now = new Date();
+                const assemblyStart = new Date(eventStart);
                 
-                // Current active players
+                if (now >= assemblyStart) {
+                    // Assembly has started - get Assembly timeframe data
+                    const topGamesResponse = await fetch(`/api/top-games?start=${eventStart}&end=${eventEnd}&limit=100`);
+                    const topGamesData = await topGamesResponse.json();
+                    
+                    document.getElementById('totalGames').textContent = `Total: ${topGamesData.length}`;
+                    
+                    // Get total unique players for Assembly timeframe
+                    const totalUniquePlayers = topGamesData.reduce((sum, game) => sum + game.unique_players, 0);
+                    document.getElementById('uniquePlayers').textContent = `Total: ${totalUniquePlayers}`;
+                } else {
+                    // Assembly hasn't started yet - show zero for Assembly totals
+                    document.getElementById('totalGames').textContent = `Total: 0`;
+                    document.getElementById('uniquePlayers').textContent = `Total: 0`;
+                }
+                
+                // Current active players (always show regardless of event timeframe)
                 const totalPlayers = data.currentGames.reduce((sum, game) => sum + game.player_count, 0);
                 document.getElementById('totalPlayers').textContent = totalPlayers;
-                
-                // Get total unique players for Assembly timeframe
-                const totalUniquePlayers = topGamesData.reduce((sum, game) => sum + game.unique_players, 0);
-                document.getElementById('uniquePlayers').textContent = `Total: ${totalUniquePlayers}`;
                     
                 updateTimestamp();
                 
@@ -887,7 +898,18 @@
                 // Assembly Summer 2025 event period: 31.07.2025 10:00 - 03.08.2025 16:00
                 const eventStart = '2025-07-31T07:00:00Z'; // 10:00 Finnish time (UTC+3)
                 const eventEnd = '2025-08-03T13:00:00Z';   // 16:00 Finnish time (UTC+3)
-                const response = await fetch(`/api/member-history?start=${eventStart}&end=${eventEnd}`);
+                const now = new Date();
+                const assemblyStart = new Date(eventStart);
+                
+                let response;
+                if (now >= assemblyStart) {
+                    // Assembly has started - use Assembly timeframe
+                    response = await fetch(`/api/member-history?start=${eventStart}&end=${eventEnd}`);
+                } else {
+                    // Assembly hasn't started yet - show recent data (last 24 hours)
+                    response = await fetch(`/api/member-history?hours=24`);
+                }
+                
                 const data = await response.json();
                 
                 const ctx = document.getElementById('memberChart').getContext('2d');
@@ -1008,10 +1030,20 @@
                 // Assembly Summer 2025 event period: 31.07.2025 10:00 - 03.08.2025 16:00
                 const eventStart = '2025-07-31T07:00:00Z'; // 10:00 Finnish time (UTC+3)
                 const eventEnd = '2025-08-03T13:00:00Z';   // 16:00 Finnish time (UTC+3)
-                const response = await fetch(`/api/top-games?start=${eventStart}&end=${eventEnd}&limit=10`);
-                const data = await response.json();
+                const now = new Date();
+                const assemblyStart = new Date(eventStart);
                 
                 const container = document.getElementById('topGames');
+                
+                if (now < assemblyStart) {
+                    // Assembly hasn't started yet - show waiting message
+                    container.innerHTML = '<div class="loading">Assembly 2025 starts July 31, 2025 at 10:00<br>Top Games will appear during the event</div>';
+                    return;
+                }
+                
+                // Assembly has started - get Assembly timeframe data
+                const response = await fetch(`/api/top-games?start=${eventStart}&end=${eventEnd}&limit=10`);
+                const data = await response.json();
                 
                 if (data.length === 0) {
                     container.innerHTML = '<div class="loading">No game data available</div>';

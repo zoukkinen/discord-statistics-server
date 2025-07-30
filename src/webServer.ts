@@ -38,9 +38,19 @@ export class WebServer {
 
         this.app.get('/api/member-history', async (req, res) => {
             try {
-                const hours = parseInt(req.query.hours as string) || 24;
-                const history = await this.database.getMemberStatsHistory(hours);
-                res.json(history);
+                const start = req.query.start as string;
+                const end = req.query.end as string;
+                
+                if (start && end) {
+                    // Use date range query
+                    const history = await this.database.getMemberStatsHistoryByDateRange(start, end);
+                    res.json(history);
+                } else {
+                    // Fallback to hours-based query
+                    const hours = parseInt(req.query.hours as string) || 24;
+                    const history = await this.database.getMemberStatsHistory(hours);
+                    res.json(history);
+                }
             } catch (error) {
                 console.error('Error fetching member history:', error);
                 res.status(500).json({ error: 'Failed to fetch member history' });
@@ -60,10 +70,20 @@ export class WebServer {
 
         this.app.get('/api/top-games', async (req, res) => {
             try {
-                const hours = parseInt(req.query.hours as string) || 24;
+                const start = req.query.start as string;
+                const end = req.query.end as string;
                 const limit = parseInt(req.query.limit as string) || 10;
-                const topGames = await this.database.getTopGames(hours, limit);
-                res.json(topGames);
+                
+                if (start && end) {
+                    // Use date range query
+                    const topGames = await this.database.getTopGamesByDateRange(start, end, limit);
+                    res.json(topGames);
+                } else {
+                    // Fallback to hours-based query
+                    const hours = parseInt(req.query.hours as string) || 24;
+                    const topGames = await this.database.getTopGames(hours, limit);
+                    res.json(topGames);
+                }
             } catch (error) {
                 console.error('Error fetching top games:', error);
                 res.status(500).json({ error: 'Failed to fetch top games' });

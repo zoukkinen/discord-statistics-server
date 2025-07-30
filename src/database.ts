@@ -179,6 +179,22 @@ export class Database {
         return rows;
     }
 
+    public async getMemberStatsHistoryByDateRange(startDate: string, endDate: string): Promise<MemberStats[]> {
+        if (!this.db) throw new Error('Database not initialized');
+
+        return new Promise((resolve, reject) => {
+            this.db!.all(`
+                SELECT timestamp, total_members, online_members
+                FROM member_stats
+                WHERE timestamp >= ? AND timestamp <= ?
+                ORDER BY timestamp ASC
+            `, [startDate, endDate], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows as MemberStats[]);
+            });
+        });
+    }
+
     public async getGameStatsHistory(hours: number = 24): Promise<GameStats[]> {
         if (!this.db) throw new Error('Database not initialized');
 
@@ -238,6 +254,57 @@ export class Database {
                     ORDER BY total_playtime_minutes DESC
                     LIMIT ?
                 `, [limit], (err2, statsRows) => {
+                    if (err2) reject(err2);
+                    else resolve(statsRows as {game_name: string, total_playtime_minutes: number, unique_players: number}[]);
+                });
+            });
+        });
+    }
+
+    public async getTopGamesByDateRange(startDate: string, endDate: string, limit: number = 10): Promise<{game_name: string, total_playtime_minutes: number, unique_players: number}[]> {
+        if (!this.db) throw new Error('Database not initialized');
+
+        return new Promise((resolve, reject) => {
+            // First try to get data from game_sessions (real-time tracking)
+            this.db!.all(`
+                SELECT 
+                    game_name,
+                    SUM(COALESCE(duration_minutes, 0)) as total_playtime_minutes,
+                    COUNT(DISTINCT user_id) as unique_players
+                FROM game_sessions
+                WHERE start_time >= ? AND start_time <= ?
+                GROUP BY game_name
+                HAVING total_playtime_minutes > 0
+                ORDER BY total_playtime_minutes DESC
+                LIMIT ?
+            `, [startDate, endDate, limit], (err, sessionRows) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                // If we have good session data, use it
+                if (sessionRows && sessionRows.length > 0 && sessionRows.some((row: any) => row.total_playtime_minutes > 0)) {
+                    resolve(sessionRows as {game_name: string, total_playtime_minutes: number, unique_players: number}[]);
+                    return;
+                }
+
+                // Fallback: Calculate from game_stats (periodic collection data)
+                this.db!.all(`
+                    SELECT 
+                        game_name,
+                        -- Estimate playtime based on frequency of appearances in stats
+                        -- Each stats entry represents ~2 minutes of activity
+                        COUNT(*) * 2 as total_playtime_minutes,
+                        -- Estimate unique players as max player count seen
+                        MAX(player_count) as unique_players
+                    FROM game_stats
+                    WHERE timestamp >= ? AND timestamp <= ?
+                      AND player_count > 0
+                    GROUP BY game_name
+                    ORDER BY total_playtime_minutes DESC
+                    LIMIT ?
+                `, [startDate, endDate, limit], (err2, statsRows) => {
                     if (err2) reject(err2);
                     else resolve(statsRows as {game_name: string, total_playtime_minutes: number, unique_players: number}[]);
                 });
