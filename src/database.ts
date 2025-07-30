@@ -278,8 +278,7 @@ export class Database {
             SELECT game_name, 
                    COUNT(DISTINCT user_id) as player_count
             FROM game_sessions
-            WHERE end_time IS NULL 
-            AND start_time >= datetime('now', '-6 hours')
+            WHERE end_time IS NULL
             GROUP BY game_name
             HAVING player_count > 0
             ORDER BY player_count DESC
