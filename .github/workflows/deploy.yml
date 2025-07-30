@@ -68,24 +68,47 @@ jobs:
     - name: 📥 Checkout code
       uses: actions/checkout@v4
 
-    - name: 🚀 Deploy to Heroku
-      uses: akhileshns/heroku-deploy@v3.12.14
-      with:
-        heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
-        heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
-        heroku_email: ${{ secrets.HEROKU_EMAIL }}
-        usedocker: true
-        docker_heroku_process_type: web
-        healthcheck: "https://assembly.zoukkinen.com/api/health"
-        delay: 30
-        rollbackonhealthcheckfailed: true
+    - name: � Install Heroku CLI
+      run: |
+        curl https://cli-assets.heroku.com/install.sh | sh
+        
+    - name: 🔐 Login to Heroku Container Registry
+      env:
+        HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+      run: |
+        echo $HEROKU_API_KEY | docker login --username=_ --password-stdin registry.heroku.com
+
+    - name: 🐳 Build and push Docker image
+      env:
+        HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+      run: |
+        docker build -t registry.heroku.com/$HEROKU_APP_NAME/web .
+        docker push registry.heroku.com/$HEROKU_APP_NAME/web
+
+    - name: 🚀 Release to Heroku
+      env:
+        HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+      run: |
+        heroku container:release web --app $HEROKU_APP_NAME
 
     - name: 🏥 Health Check
       run: |
+        echo "🔍 Waiting for application to start..."
+        sleep 60
         echo "🔍 Checking application health..."
-        sleep 30
-        curl -f https://assembly.zoukkinen.com/api/health || exit 1
-        echo "✅ Application is healthy!"
+        for i in {1..5}; do
+          if curl -f https://assembly.zoukkinen.com/api/health; then
+            echo "✅ Application is healthy!"
+            exit 0
+          else
+            echo "⏳ Attempt $i failed, retrying in 30 seconds..."
+            sleep 30
+          fi
+        done
+        echo "❌ Health check failed after 5 attempts"
+        exit 1
 
     - name: 📊 Post-deployment notification
       if: success()
