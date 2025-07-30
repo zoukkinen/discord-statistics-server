@@ -198,6 +198,7 @@ export class Database {
         if (!this.db) throw new Error('Database not initialized');
 
         return new Promise((resolve, reject) => {
+            // First try to get data from game_sessions (real-time tracking)
             this.db!.all(`
                 SELECT 
                     game_name,
@@ -206,11 +207,40 @@ export class Database {
                 FROM game_sessions
                 WHERE start_time >= datetime('now', '-${hours} hours')
                 GROUP BY game_name
+                HAVING total_playtime_minutes > 0
                 ORDER BY total_playtime_minutes DESC
                 LIMIT ?
-            `, [limit], (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows as {game_name: string, total_playtime_minutes: number, unique_players: number}[]);
+            `, [limit], (err, sessionRows) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                // If we have good session data, use it
+                if (sessionRows && sessionRows.length > 0 && sessionRows.some((row: any) => row.total_playtime_minutes > 0)) {
+                    resolve(sessionRows as {game_name: string, total_playtime_minutes: number, unique_players: number}[]);
+                    return;
+                }
+
+                // Fallback: Calculate from game_stats (periodic collection data)
+                this.db!.all(`
+                    SELECT 
+                        game_name,
+                        -- Estimate playtime based on frequency of appearances in stats
+                        -- Each stats entry represents ~2 minutes of activity
+                        COUNT(*) * 2 as total_playtime_minutes,
+                        -- Estimate unique players as max player count seen
+                        MAX(player_count) as unique_players
+                    FROM game_stats
+                    WHERE timestamp >= datetime('now', '-${hours} hours')
+                      AND player_count > 0
+                    GROUP BY game_name
+                    ORDER BY total_playtime_minutes DESC
+                    LIMIT ?
+                `, [limit], (err2, statsRows) => {
+                    if (err2) reject(err2);
+                    else resolve(statsRows as {game_name: string, total_playtime_minutes: number, unique_players: number}[]);
+                });
             });
         });
     }
