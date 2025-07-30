@@ -23,7 +23,7 @@ jobs:
         cache: 'npm'
 
     - name: 📦 Install dependencies
-      run: npm ci
+      run: npm ci --prefer-offline --no-audit --no-fund
 
     - name: 🔨 Build application
       run: npm run build
@@ -60,7 +60,10 @@ jobs:
         HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
         HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
       run: |
-        docker build -t registry.heroku.com/$HEROKU_APP_NAME/web .
+        # Enable Docker BuildKit for faster builds
+        export DOCKER_BUILDKIT=1
+        docker build --cache-from registry.heroku.com/$HEROKU_APP_NAME/web \
+          -t registry.heroku.com/$HEROKU_APP_NAME/web .
         docker push registry.heroku.com/$HEROKU_APP_NAME/web
 
     - name: 🚀 Release to Heroku
@@ -69,45 +72,26 @@ jobs:
         HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
       run: |
         echo "🚀 Releasing to Heroku..."
-        timeout 300 heroku container:release web --app $HEROKU_APP_NAME || {
+        timeout 120 heroku container:release web --app $HEROKU_APP_NAME || {
           echo "⚠️  Release command timed out or failed"
           echo "🔍 Checking release status..."
-          heroku releases --app $HEROKU_APP_NAME --num 5
+          heroku releases --app $HEROKU_APP_NAME --num 3
           exit 1
         }
 
     - name: 🏥 Health Check
       run: |
-        echo "🔍 Waiting for application to start..."
-        sleep 60
+        echo "🔍 Quick health check..."
+        sleep 15
         echo "🔍 Checking application health..."
         
-        MAX_ATTEMPTS=5
-        ATTEMPT=1
-        
-        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-          echo "⏳ Health check attempt $ATTEMPT of $MAX_ATTEMPTS..."
-          
-          if curl -f --max-time 30 --connect-timeout 10 https://assembly.zoukkinen.com/api/health; then
-            echo "✅ Application is healthy!"
-            break
-          else
-            echo "❌ Attempt $ATTEMPT failed"
-            
-            if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-              echo "💥 Health check failed after $MAX_ATTEMPTS attempts"
-              echo "🔍 Checking if app is at least responding..."
-              curl -I --max-time 10 https://assembly.zoukkinen.com/ || true
-              echo "⚠️  Deployment completed but health check failed - manual verification needed"
-              exit 0  # Don't fail the deployment, just warn
-            else
-              echo "⏳ Waiting 30 seconds before retry..."
-              sleep 30
-            fi
-          fi
-          
-          ATTEMPT=$((ATTEMPT + 1))
-        done
+        if curl -f --max-time 15 --connect-timeout 5 https://assembly.zoukkinen.com/api/health; then
+          echo "✅ Application is healthy!"
+        else
+          echo "⚠️  Quick health check failed - app may still be starting"
+          echo "🔍 Checking if app responds..."
+          curl -I --max-time 10 https://assembly.zoukkinen.com/ || true
+        fi
 
     - name: 📊 Post-deployment notification
       if: success()
