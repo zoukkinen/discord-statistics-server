@@ -1338,24 +1338,46 @@
             }
         });
 
-        // Register Service Worker for PWA functionality
+        // Register Service Worker for PWA functionality with better update handling
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
                     .then((registration) => {
                         console.log('Service Worker registered successfully:', registration.scope);
                         
-                        // Check for updates
+                        // Check for updates immediately
+                        registration.update();
+                        
+                        // Check for updates every 60 seconds
+                        setInterval(() => {
+                            registration.update();
+                        }, 60000);
+                        
+                        // Handle updates
                         registration.addEventListener('updatefound', () => {
                             const newWorker = registration.installing;
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    // New content is available, prompt user to refresh
-                                    if (confirm('New version available! Refresh to update?')) {
-                                        window.location.reload();
+                            if (newWorker) {
+                                newWorker.addEventListener('statechange', () => {
+                                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                        // New content is available, force update
+                                        console.log('New service worker installed, updating...');
+                                        
+                                        // Send message to service worker to skip waiting
+                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                        
+                                        // Refresh the page after a short delay
+                                        setTimeout(() => {
+                                            window.location.reload();
+                                        }, 1000);
                                     }
-                                }
-                            });
+                                });
+                            }
+                        });
+                        
+                        // Handle service worker controller change
+                        navigator.serviceWorker.addEventListener('controllerchange', () => {
+                            console.log('Service Worker controller changed, reloading...');
+                            window.location.reload();
                         });
                     })
                     .catch((error) => {
