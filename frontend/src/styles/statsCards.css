@@ -1,0 +1,223 @@
+/* Stats Cards Styles */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: rgba(15, 15, 15, 0.9);
+    border: 1px solid rgba(0, 255, 157, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.stat-card:hover {
+    border-color: rgba(0, 255, 157, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0, 255, 157, 0.1);
+}
+
+.stat-card:hover::before {
+    opacity: 1;
+}
+
+.members-card {
+    border-color: rgba(0, 255, 157, 0.3);
+}
+
+.members-card::before {
+    background: linear-gradient(90deg, transparent, #00ff9d, transparent);
+}
+
+.members-card:hover {
+    border-color: rgba(0, 255, 157, 0.5);
+    box-shadow: 0 8px 32px rgba(0, 255, 157, 0.15);
+}
+
+.games-card {
+    border-color: rgba(255, 102, 0, 0.3);
+}
+
+.games-card::before {
+    background: linear-gradient(90deg, transparent, #ff6600, transparent);
+}
+
+.games-card:hover {
+    border-color: rgba(255, 102, 0, 0.5);
+    box-shadow: 0 8px 32px rgba(255, 102, 0, 0.15);
+}
+
+.players-card {
+    border-color: rgba(0, 162, 255, 0.3);
+}
+
+.players-card::before {
+    background: linear-gradient(90deg, transparent, #00a2ff, transparent);
+}
+
+.players-card:hover {
+    border-color: rgba(0, 162, 255, 0.5);
+    box-shadow: 0 8px 32px rgba(0, 162, 255, 0.15);
+}
+
+.update-card {
+    border-color: rgba(156, 163, 175, 0.3);
+}
+
+.update-card::before {
+    background: linear-gradient(90deg, transparent, #9ca3af, transparent);
+}
+
+.update-card:hover {
+    border-color: rgba(156, 163, 175, 0.5);
+    box-shadow: 0 8px 32px rgba(156, 163, 175, 0.15);
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    min-width: 60px;
+    text-align: center;
+    opacity: 0.9;
+}
+
+.stat-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #aaaaaa;
+    margin-bottom: 4px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 4px;
+    line-height: 1.1;
+}
+
+.stat-value.small {
+    font-size: 1.4rem;
+}
+
+.stat-secondary {
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+.online-count {
+    color: #00ff9d;
+}
+
+.games-count {
+    color: #ff6600;
+}
+
+.players-count {
+    color: #00a2ff;
+}
+
+.update-status {
+    color: #9ca3af;
+}
+
+.updating .stat-icon {
+    animation: spin 1s linear infinite;
+}
+
+.updating .stat-value {
+    animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    
+    .stat-card {
+        padding: 15px;
+        gap: 12px;
+    }
+    
+    .stat-icon {
+        font-size: 2rem;
+        min-width: 50px;
+    }
+    
+    .stat-value {
+        font-size: 1.6rem;
+    }
+    
+    .stat-value.small {
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stat-card {
+        padding: 12px;
+        gap: 10px;
+    }
+    
+    .stat-icon {
+        font-size: 1.8rem;
+        min-width: 45px;
+    }
+    
+    .stat-value {
+        font-size: 1.4rem;
+    }
+    
+    .stat-value.small {
+        font-size: 1.1rem;
+    }
+    
+    .stat-label {
+        font-size: 0.8rem;
+    }
+    
+    .stat-secondary {
+        font-size: 0.8rem;
+    }
+}

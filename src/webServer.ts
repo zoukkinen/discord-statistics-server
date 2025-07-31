@@ -22,7 +22,14 @@ export class WebServer {
     private setupMiddleware(): void {
         this.app.use(cors());
         this.app.use(express.json());
+        
+        // Serve static files from the build output in development and production
         this.app.use(express.static(path.join(__dirname, '../public')));
+        
+        // Serve SolidJS build files
+        if (process.env.NODE_ENV === 'production') {
+            this.app.use('/dist', express.static(path.join(__dirname, '../public/dist')));
+        }
     }
 
     private setupRoutes(): void {
@@ -114,6 +121,23 @@ export class WebServer {
             }
         });
 
+        // Config endpoint for frontend
+        this.app.get('/api/config', async (req, res) => {
+            try {
+                const config = {
+                    name: process.env.EVENT_NAME || 'Assembly Summer 2025',
+                    start_date: process.env.EVENT_START_DATE || '2025-07-31T00:00:00+03:00',
+                    end_date: process.env.EVENT_END_DATE || '2025-08-03T23:59:59+03:00',
+                    timezone: process.env.EVENT_TIMEZONE || 'Europe/Helsinki',
+                    description: process.env.EVENT_DESCRIPTION || 'Finland\'s biggest computer festival and digital culture event'
+                };
+                res.json(config);
+            } catch (error) {
+                console.error('Error fetching config:', error);
+                res.status(500).json({ error: 'Failed to fetch configuration' });
+            }
+        });
+
         // Health check endpoint
         this.app.get('/api/health', (req, res) => {
             res.json({ 
@@ -140,12 +164,29 @@ export class WebServer {
 
         // Serve the main dashboard page
         this.app.get('/', (req, res) => {
-            res.sendFile(path.join(__dirname, '../public/index.html'));
+            if (process.env.NODE_ENV === 'production') {
+                // In production, serve the SolidJS build
+                res.sendFile(path.join(__dirname, '../public/dist/index.html'));
+            } else {
+                // In development, serve the original index.html with SolidJS dev server
+                res.sendFile(path.join(__dirname, '../frontend/index.html'));
+            }
         });
 
-        // 404 handler
-        this.app.use((req, res) => {
-            res.status(404).json({ error: 'Not found' });
+        // Catch-all handler for SPA routing
+        this.app.get('*', (req, res) => {
+            // Don't intercept API routes
+            if (req.path.startsWith('/api/')) {
+                res.status(404).json({ error: 'API endpoint not found' });
+                return;
+            }
+            
+            // Serve the main app for all other routes (SPA routing)
+            if (process.env.NODE_ENV === 'production') {
+                res.sendFile(path.join(__dirname, '../public/dist/index.html'));
+            } else {
+                res.sendFile(path.join(__dirname, '../frontend/index.html'));
+            }
         });
     }
 
