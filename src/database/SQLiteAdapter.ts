@@ -218,7 +218,7 @@ export class SQLiteAdapter implements DatabaseAdapter {
                 FROM game_sessions
                 WHERE start_time BETWEEN ? AND ?
                 GROUP BY game_name
-                ORDER BY total_sessions DESC, total_minutes DESC
+                ORDER BY total_minutes DESC, total_sessions DESC
                 LIMIT ?
             `, [startDate, endDate, limit], (err, rows) => {
                 if (err) reject(err);

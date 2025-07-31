@@ -205,7 +205,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             FROM game_sessions
             WHERE start_time BETWEEN $1 AND $2
             GROUP BY game_name
-            ORDER BY total_sessions DESC, total_minutes DESC
+            ORDER BY total_minutes DESC, total_sessions DESC
             LIMIT $3
         `, [startDate, endDate, limit]);
 
