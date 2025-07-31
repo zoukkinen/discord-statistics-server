@@ -187,12 +187,23 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             SELECT 
                 game_name,
                 COUNT(*) as total_sessions,
-                COALESCE(SUM(duration_minutes), 0) as total_minutes,
-                COALESCE(AVG(duration_minutes), 0) as avg_minutes,
+                COALESCE(SUM(
+                    CASE 
+                        WHEN duration_minutes IS NOT NULL THEN duration_minutes
+                        WHEN end_time IS NULL THEN EXTRACT(EPOCH FROM (NOW() - start_time)) / 60
+                        ELSE 0
+                    END
+                ), 0) as total_minutes,
+                COALESCE(AVG(
+                    CASE 
+                        WHEN duration_minutes IS NOT NULL THEN duration_minutes
+                        WHEN end_time IS NULL THEN EXTRACT(EPOCH FROM (NOW() - start_time)) / 60
+                        ELSE 0
+                    END
+                ), 0) as avg_minutes,
                 COUNT(DISTINCT user_id) as unique_players
             FROM game_sessions
             WHERE start_time BETWEEN $1 AND $2
-            AND duration_minutes IS NOT NULL
             GROUP BY game_name
             ORDER BY total_sessions DESC, total_minutes DESC
             LIMIT $3
