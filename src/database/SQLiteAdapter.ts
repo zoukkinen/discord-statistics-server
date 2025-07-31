@@ -192,7 +192,7 @@ export class SQLiteAdapter implements DatabaseAdapter {
         });
     }
 
-    public async getTopGamesInRange(startDate: string, endDate: string, limit: number = 10): Promise<{game_name: string, total_sessions: number, total_minutes: number, avg_minutes: number}[]> {
+    public async getTopGamesInRange(startDate: string, endDate: string, limit: number = 10): Promise<{game_name: string, total_sessions: number, total_minutes: number, avg_minutes: number, unique_players: number}[]> {
         if (!this.db) throw new Error('Database not initialized');
 
         return new Promise((resolve, reject) => {
@@ -201,7 +201,8 @@ export class SQLiteAdapter implements DatabaseAdapter {
                     game_name,
                     COUNT(*) as total_sessions,
                     COALESCE(SUM(duration_minutes), 0) as total_minutes,
-                    COALESCE(AVG(duration_minutes), 0) as avg_minutes
+                    COALESCE(AVG(duration_minutes), 0) as avg_minutes,
+                    COUNT(DISTINCT user_id) as unique_players
                 FROM game_sessions
                 WHERE start_time BETWEEN ? AND ?
                 AND duration_minutes IS NOT NULL
@@ -210,7 +211,7 @@ export class SQLiteAdapter implements DatabaseAdapter {
                 LIMIT ?
             `, [startDate, endDate, limit], (err, rows) => {
                 if (err) reject(err);
-                else resolve(rows as {game_name: string, total_sessions: number, total_minutes: number, avg_minutes: number}[]);
+                else resolve(rows as {game_name: string, total_sessions: number, total_minutes: number, avg_minutes: number, unique_players: number}[]);
             });
         });
     }

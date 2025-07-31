@@ -180,7 +180,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
         }));
     }
 
-    public async getTopGamesInRange(startDate: string, endDate: string, limit: number = 10): Promise<{game_name: string, total_sessions: number, total_minutes: number, avg_minutes: number}[]> {
+    public async getTopGamesInRange(startDate: string, endDate: string, limit: number = 10): Promise<{game_name: string, total_sessions: number, total_minutes: number, avg_minutes: number, unique_players: number}[]> {
         if (!this.client) throw new Error('Database not initialized');
 
         const result = await this.client.query(`
@@ -188,7 +188,8 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
                 game_name,
                 COUNT(*) as total_sessions,
                 COALESCE(SUM(duration_minutes), 0) as total_minutes,
-                COALESCE(AVG(duration_minutes), 0) as avg_minutes
+                COALESCE(AVG(duration_minutes), 0) as avg_minutes,
+                COUNT(DISTINCT user_id) as unique_players
             FROM game_sessions
             WHERE start_time BETWEEN $1 AND $2
             AND duration_minutes IS NOT NULL
@@ -201,7 +202,8 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             game_name: row.game_name,
             total_sessions: parseInt(row.total_sessions),
             total_minutes: parseFloat(row.total_minutes),
-            avg_minutes: parseFloat(row.avg_minutes)
+            avg_minutes: parseFloat(row.avg_minutes),
+            unique_players: parseInt(row.unique_players)
         }));
     }
 

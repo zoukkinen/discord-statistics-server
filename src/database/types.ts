@@ -30,7 +30,7 @@ export interface DatabaseAdapter {
     // Game statistics
     recordGameActivity(gameName: string, playerCount: number): Promise<void>;
     getGameStatsInRange(startDate: string, endDate: string): Promise<GameStats[]>;
-    getTopGamesInRange(startDate: string, endDate: string, limit?: number): Promise<{game_name: string, total_sessions: number, total_minutes: number, avg_minutes: number}[]>;
+    getTopGamesInRange(startDate: string, endDate: string, limit?: number): Promise<{game_name: string, total_sessions: number, total_minutes: number, avg_minutes: number, unique_players: number}[]>;
     
     // Game sessions
     recordGameSession(userId: string, gameName: string, action: 'start' | 'end'): Promise<void>;

@@ -961,7 +961,7 @@
                     document.getElementById('totalGames').textContent = `Total: ${topGamesData.length}`;
                     
                     // Get total unique players for event timeframe
-                    const totalUniquePlayers = topGamesData.reduce((sum, game) => sum + game.unique_players, 0);
+                    const totalUniquePlayers = topGamesData.reduce((sum, game) => sum + (game.unique_players || 0), 0);
                     document.getElementById('uniquePlayers').textContent = `Total: ${totalUniquePlayers}`;
                 } else {
                     // Event hasn't started yet - show zero for event totals
@@ -1156,15 +1156,17 @@
                 }
                 
                 container.innerHTML = data.map(game => {
-                    const hours = Math.floor(game.total_playtime_minutes / 60);
-                    const minutes = game.total_playtime_minutes % 60;
+                    const totalMinutes = game.total_minutes || 0;
+                    const hours = Math.floor(totalMinutes / 60);
+                    const minutes = totalMinutes % 60;
                     const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                    const uniquePlayers = game.unique_players || 0;
                     
                     return `
                         <div class="game-item">
                             <div class="game-name">${game.game_name}</div>
                             <div class="game-stats">
-                                ${timeStr} • ${game.unique_players} player${game.unique_players !== 1 ? 's' : ''}
+                                ${timeStr} • ${uniquePlayers} player${uniquePlayers !== 1 ? 's' : ''}
                             </div>
                         </div>
                     `;
