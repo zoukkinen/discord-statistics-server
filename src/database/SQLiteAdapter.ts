@@ -200,20 +200,20 @@ export class SQLiteAdapter implements DatabaseAdapter {
                 SELECT 
                     game_name,
                     COUNT(*) as total_sessions,
-                    COALESCE(SUM(
+                    COALESCE(ROUND(SUM(
                         CASE 
                             WHEN duration_minutes IS NOT NULL THEN duration_minutes
                             WHEN end_time IS NULL THEN ROUND((JULIANDAY('now') - JULIANDAY(start_time)) * 24 * 60)
                             ELSE 0
                         END
-                    ), 0) as total_minutes,
-                    COALESCE(AVG(
+                    ), 2), 0) as total_minutes,
+                    COALESCE(ROUND(AVG(
                         CASE 
                             WHEN duration_minutes IS NOT NULL THEN duration_minutes
                             WHEN end_time IS NULL THEN ROUND((JULIANDAY('now') - JULIANDAY(start_time)) * 24 * 60)
                             ELSE 0
                         END
-                    ), 0) as avg_minutes,
+                    ), 2), 0) as avg_minutes,
                     COUNT(DISTINCT user_id) as unique_players
                 FROM game_sessions
                 WHERE start_time BETWEEN ? AND ?

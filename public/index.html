@@ -1156,7 +1156,7 @@
                 }
                 
                 container.innerHTML = data.map(game => {
-                    const totalMinutes = game.total_minutes || 0;
+                    const totalMinutes = Math.round(game.total_minutes || 0);
                     const hours = Math.floor(totalMinutes / 60);
                     const minutes = totalMinutes % 60;
                     const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
