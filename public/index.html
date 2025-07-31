@@ -27,6 +27,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* Safari-specific fixes */
+        html {
+            background: #000000;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        
+        @supports (-webkit-appearance:none) {
+            body {
+                background: #000000 !important; /* Force solid black on Safari */
+            }
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -35,7 +50,10 @@
 
         body {
             font-family: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #111111 100%);
+            background: #000000; /* Fallback for Safari */
+            background: -webkit-linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #111111 100%); /* Safari */
+            background: -moz-linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #111111 100%); /* Firefox */
+            background: linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #111111 100%); /* Standard */
             color: #ffffff;
             min-height: 100vh;
             padding: 10px;
@@ -372,7 +390,10 @@
         }
 
         .modal-content {
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #2d2d2d 100%);
+            background: #0a0a0a; /* Fallback for Safari */
+            background: -webkit-linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #2d2d2d 100%); /* Safari */
+            background: -moz-linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #2d2d2d 100%); /* Firefox */
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #2d2d2d 100%); /* Standard */
             margin: 5% auto;
             padding: 20px;
             border: 1px solid rgba(0, 255, 157, 0.3);
