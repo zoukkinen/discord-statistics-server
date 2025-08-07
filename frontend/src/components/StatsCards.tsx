@@ -29,19 +29,19 @@ const StatsCards: Component = () => {
       <div class="stat-card">
         <h3>👥 Online</h3>
         <div class="big-number">{statsStore.onlineMembers}</div>
-        <div class="stat-secondary">Total: {statsStore.totalMembers}</div>
+        <div class="stat-secondary">of {statsStore.totalMembers} members</div>
       </div>
 
       <div class="stat-card">
         <h3>🎮 Games</h3>
         <div class="big-number">{statsStore.totalGames}</div>
-        <div class="stat-secondary">Total: {statsStore.totalGames}</div>
+        <div class="stat-secondary">Active games</div>
       </div>
 
       <div class="stat-card">
         <h3>🎯 Players</h3>
         <div class="big-number">{statsStore.totalActivePlayers}</div>
-        <div class="stat-secondary">Total: {statsStore.totalActivePlayers}</div>
+        <div class="stat-secondary">Currently playing</div>
       </div>
 
       <div class={`stat-card ${statsStore.isUpdating ? 'updating' : ''}`}>

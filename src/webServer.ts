@@ -23,6 +23,21 @@ export class WebServer {
         this.app.use(cors());
         this.app.use(express.json());
         
+        // Set correct MIME types for PWA files
+        this.app.use('/sw.js', (req, res, next) => {
+            res.type('application/javascript');
+            next();
+        });
+        
+        this.app.use('/manifest.json', (req, res, next) => {
+            res.type('application/json');
+            next();
+        });
+        
+        // Serve PWA files from public root (both dev and prod need these)
+        this.app.use('/sw.js', express.static(path.join(__dirname, '../public/sw.js')));
+        this.app.use('/manifest.json', express.static(path.join(__dirname, '../public/manifest.json')));
+        
         // Serve static files from the SolidJS build output
         if (process.env.NODE_ENV === 'production') {
             // In production, serve the built SolidJS files

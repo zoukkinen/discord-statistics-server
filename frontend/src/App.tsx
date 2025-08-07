@@ -15,6 +15,7 @@ const App: Component = () => {
   const [isLoading, setIsLoading] = createSignal(true);
   const [showRecentActivity, setShowRecentActivity] = createSignal(false);
   let refreshInterval: NodeJS.Timeout;
+  let updateInterval: NodeJS.Timeout;
 
   onMount(async () => {
     // Check URL parameters for recent activity display
@@ -56,7 +57,7 @@ const App: Component = () => {
         registration.update();
         
         // Check for updates every 60 seconds
-        const updateInterval = setInterval(() => {
+        updateInterval = setInterval(() => {
           registration.update();
         }, 60000);
         
@@ -87,10 +88,6 @@ const App: Component = () => {
           window.location.reload();
         });
         
-        // Clean up the update interval on unmount
-        onCleanup(() => {
-          clearInterval(updateInterval);
-        });
       } catch (error) {
         console.log('Service Worker registration failed:', error);
       }
@@ -100,6 +97,9 @@ const App: Component = () => {
   onCleanup(() => {
     if (refreshInterval) {
       clearInterval(refreshInterval);
+    }
+    if (updateInterval) {
+      clearInterval(updateInterval);
     }
   });
 

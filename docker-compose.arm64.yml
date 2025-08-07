@@ -1,0 +1,13 @@
+# Apple Silicon (ARM64) optimizations
+# This file is automatically included on ARM64 systems
+
+services:
+  discord-bot:
+    # Optimize for ARM64 architecture
+    platform: linux/arm64
+    volumes:
+      - discord_data:/app/data
+
+  postgres:
+    # Use ARM64 PostgreSQL image for better performance
+    platform: linux/arm64

@@ -1,4 +1,4 @@
-.PHONY: help build up down logs restart status clean dev prod backup restore platform-info dev-hot dev-detached stop-dev shell shell-root shell-dev shell-dev-root heroku-validate heroku-backup heroku-restore sync-production list-backups
+.PHONY: help build up down logs restart status clean dev prod backup restore platform-info dev-detached shell shell-root heroku-validate heroku-backup heroku-restore sync-production list-backups
 
 # Detect platform for better compatibility
 UNAME_S := $(shell uname -s)
@@ -6,6 +6,20 @@ UNAME_M := $(shell uname -m)
 
 # WSL detection
 WSL_DETECTED := $(shell if [ -f /proc/version ] && grep -qi microsoft /proc/version; then echo "true"; else echo "false"; fi)
+
+# Determine compose files based on platform
+COMPOSE_FILES := -f docker-compose.yml
+
+# Add platform-specific overrides (only for special cases)
+ifeq ($(WSL_DETECTED),true)
+	COMPOSE_FILES += -f docker-compose.wsl.yml
+else ifeq ($(UNAME_M),arm64)
+	COMPOSE_FILES += -f docker-compose.arm64.yml
+endif
+# Note: Linux AMD64 is the default - no override needed
+
+# Docker compose command with platform files
+DOCKER_COMPOSE := docker-compose $(COMPOSE_FILES)
 
 # Default target
 help: ## Show this help message
@@ -22,131 +36,68 @@ platform-info: ## Show platform information
 	@echo "  OS: $(UNAME_S)"
 	@echo "  Architecture: $(UNAME_M)"
 	@echo "  WSL Detected: $(WSL_DETECTED)"
+	@echo "  Compose Files: $(COMPOSE_FILES)"
 ifeq ($(WSL_DETECTED),true)
 	@echo "  🐧 Running on Windows Subsystem for Linux"
-endif
-ifeq ($(UNAME_M),arm64)
+else ifeq ($(UNAME_M),arm64)
 	@echo "  🍎 ARM64 detected (Apple Silicon compatible)"
+else
+	@echo "  🐧 Standard Linux/AMD64 (using defaults)"
 endif
 
 # Development commands
-dev: ## Start in development mode (without nginx)
+dev: ## Start in development mode with hot reload
 	@echo "🚀 Starting Assembly Discord Tracker in development mode..."
 	@if [ ! -f .env ]; then echo "❌ .env file not found! Copy .env.example and configure it."; exit 1; fi
-ifeq ($(WSL_DETECTED),true)
-	@echo "🐧 WSL detected - using optimized settings..."
-	COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker-compose up --build
-else
-	docker-compose up --build
-endif
+	$(DOCKER_COMPOSE) up --build
 
 # Production commands
-prod: ## Start in production mode (with nginx)
+prod: down ## Start in production mode (with nginx)
 	@echo "🚀 Starting Assembly Discord Tracker in production mode..."
 	@if [ ! -f .env ]; then echo "❌ .env file not found! Copy .env.example and configure it."; exit 1; fi
-ifeq ($(WSL_DETECTED),true)
-	@echo "🐧 WSL detected - using optimized settings..."
-	COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker-compose --profile production up --build -d
-else
-	docker-compose --profile production up --build -d
-endif
+	NODE_ENV=production $(DOCKER_COMPOSE) --profile production up --build -d
 
 # Basic Docker operations
 build: ## Build the Docker image
 	@echo "🔨 Building Discord tracker image..."
-ifeq ($(UNAME_M),arm64)
-	@echo "🍎 Building for ARM64 (Apple Silicon)..."
-	DOCKER_BUILDKIT=1 docker-compose build
-else ifeq ($(WSL_DETECTED),true)
-	@echo "🐧 Building for WSL (AMD64)..."
-	COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker-compose build
-else
-	DOCKER_BUILDKIT=1 docker-compose build
-endif
+	$(DOCKER_COMPOSE) build
 
 build-fast: ## Fast build with cache and single platform
 	@echo "⚡ Fast building for current platform only..."
-	DOCKER_BUILDKIT=1 docker-compose build --parallel
-
-build-multiplatform: ## Build for multiple platforms (ARM64, AMD64)
-	@echo "🔨 Building multi-platform images..."
-	docker buildx create --use --name multiplatform-builder || true
-	docker buildx build --platform linux/amd64,linux/arm64 -t assembly-discord-tracker --load .
+	$(DOCKER_COMPOSE) build --parallel
 
 # Local Development (Container-First)
-dev-hot: ## Start development environment with hot reload
-	@echo "🐳 Starting development environment with hot reload..."
-	@if [ ! -f .env ]; then echo "❌ .env file not found! Copy .env.example and configure it."; exit 1; fi
-ifeq ($(WSL_DETECTED),true)
-	@echo "🐧 WSL detected - using optimized settings..."
-	COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker-compose -f docker-compose.dev.yml up --build
-else
-	docker-compose -f docker-compose.dev.yml up --build
-endif
-
 dev-detached: ## Start development environment in background
 	@echo "🐳 Starting development environment in background..."
 	@if [ ! -f .env ]; then echo "❌ .env file not found! Copy .env.example and configure it."; exit 1; fi
-ifeq ($(WSL_DETECTED),true)
-	@echo "🐧 WSL detected - using optimized settings..."
-	COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker-compose -f docker-compose.dev.yml up --build -d
-else
-	docker-compose -f docker-compose.dev.yml up --build -d
-endif
-
-stop-dev: ## Stop development environment
-	@echo "🛑 Stopping development environment..."
-	docker-compose -f docker-compose.dev.yml down
-
-# WSL specific commands
-wsl-setup: ## Setup Docker for WSL (Windows users)
-	@echo "🐧 Setting up Docker for WSL..."
-	@echo "Enabling BuildKit and optimizations for WSL..."
-	@echo 'export COMPOSE_DOCKER_CLI_BUILD=1' >> ~/.bashrc
-	@echo 'export DOCKER_BUILDKIT=1' >> ~/.bashrc
-	@echo "Please restart your WSL session or run: source ~/.bashrc"
+	$(DOCKER_COMPOSE) up --build -d
 
 up: ## Start the services
 	@echo "⬆️  Starting services..."
-	docker-compose up -d
+	$(DOCKER_COMPOSE) up -d
 
 down: ## Stop and remove all services
 	@echo "⬇️  Stopping services..."
-	docker-compose down
+	$(DOCKER_COMPOSE) down
 
 restart: ## Restart all services
 	@echo "🔄 Restarting services..."
-	docker-compose restart
+	$(DOCKER_COMPOSE) restart
 
 # Monitoring and logs
 logs: ## Show logs from all services
-	docker-compose logs -f
+	$(DOCKER_COMPOSE) logs -f
 
 logs-bot: ## Show logs from Discord bot only
-	docker-compose logs -f discord-bot
+	$(DOCKER_COMPOSE) logs -f discord-bot
 
 logs-nginx: ## Show logs from nginx only (production mode)
-	docker-compose logs -f nginx
-
-# Development monitoring
-logs-dev: ## Show logs from development services
-	docker-compose -f docker-compose.dev.yml logs -f
-
-logs-dev-backend: ## Show logs from development backend only
-	docker-compose -f docker-compose.dev.yml logs -f discord-bot-dev
-
-logs-dev-frontend: ## Show logs from development frontend only
-	docker-compose -f docker-compose.dev.yml logs -f frontend-dev
-
-status-dev: ## Show status of development services
-	@echo "📊 Development Service Status:"
-	@echo "=============================="
-	docker-compose -f docker-compose.dev.yml ps
+	$(DOCKER_COMPOSE) logs -f nginx
 
 status: ## Show status of all services
 	@echo "📊 Service Status:"
 	@echo "=================="
-	docker-compose ps
+	$(DOCKER_COMPOSE) ps
 
 health: ## Check health of the application
 	@echo "🏥 Health Check:"
@@ -161,19 +112,19 @@ endif
 clean: ## Remove all containers, images, and volumes (DESTRUCTIVE!)
 	@echo "🧹 Cleaning up Docker resources..."
 	@read -p "This will remove ALL containers, images, and data. Are you sure? (y/N): " confirm && [ "$$confirm" = "y" ]
-	docker-compose down -v --rmi all
+	$(DOCKER_COMPOSE) down -v --rmi all
 	docker system prune -af
 
 clean-soft: ## Remove containers and networks only (keeps data volume)
 	@echo "🧹 Soft cleanup (keeping data)..."
-	docker-compose down
-	docker-compose rm -f
+	$(DOCKER_COMPOSE) down
+	$(DOCKER_COMPOSE) rm -f
 
 # Database operations
 backup: ## Backup the local PostgreSQL database
 	@echo "💾 Creating local database backup..."
 	@mkdir -p backups
-	@docker-compose -f docker-compose.dev.yml exec -T postgres-dev pg_dump -U discord_bot -d discord_stats > backups/local_backup_$(shell date +%Y%m%d_%H%M%S).sql
+	$(DOCKER_COMPOSE) exec -T postgres pg_dump -U discord_bot -d discord_stats > backups/local_backup_$(shell date +%Y%m%d_%H%M%S).sql
 	@echo "✅ Local backup created in backups/ directory"
 
 restore: ## Restore database from backup (specify BACKUP_FILE=filename)
@@ -181,14 +132,14 @@ restore: ## Restore database from backup (specify BACKUP_FILE=filename)
 	@if [ -z "$(BACKUP_FILE)" ]; then echo "❌ Please specify BACKUP_FILE=filename"; exit 1; fi
 	@if [ ! -f "backups/$(BACKUP_FILE)" ]; then echo "❌ Backup file not found!"; exit 1; fi
 	@echo "⏹️  Stopping backend to release database connections..."
-	@docker-compose -f docker-compose.dev.yml stop discord-bot-dev
+	$(DOCKER_COMPOSE) stop discord-bot
 	@echo "🗑️  Preparing database for restore..."
-	@docker-compose -f docker-compose.dev.yml exec -T postgres-dev psql -U discord_bot -d postgres -c "DROP DATABASE IF EXISTS discord_stats;"
-	@docker-compose -f docker-compose.dev.yml exec -T postgres-dev psql -U discord_bot -d postgres -c "CREATE DATABASE discord_stats;"
+	$(DOCKER_COMPOSE) exec -T postgres psql -U discord_bot -d postgres -c "DROP DATABASE IF EXISTS discord_stats;"
+	$(DOCKER_COMPOSE) exec -T postgres psql -U discord_bot -d postgres -c "CREATE DATABASE discord_stats;"
 	@echo "📥 Restoring from $(BACKUP_FILE)..."
-	@docker-compose -f docker-compose.dev.yml exec -T postgres-dev psql -U discord_bot -d discord_stats < backups/$(BACKUP_FILE)
+	$(DOCKER_COMPOSE) exec -T postgres psql -U discord_bot -d discord_stats < backups/$(BACKUP_FILE)
 	@echo "🔄 Restarting backend..."
-	@docker-compose -f docker-compose.dev.yml start discord-bot-dev
+	$(DOCKER_COMPOSE) start discord-bot
 	@echo "✅ Database restored from $(BACKUP_FILE)"
 
 # Heroku Production Database Operations
@@ -209,7 +160,7 @@ heroku-restore: ## Restore Heroku backup to local database
 	fi; \
 	@echo "🔄 Restoring Heroku backup to local development..."; \
 	echo "🛑 Stopping backend service to release database connections..."; \
-	docker-compose -f docker-compose.dev.yml stop discord-bot-dev || true; \
+	$(DOCKER_COMPOSE) stop discord-bot || true; \
 	./scripts/heroku-backup.sh restore $(HEROKU_APP)
 
 sync-production: ## Download and restore latest production data (one command)
@@ -219,13 +170,13 @@ sync-production: ## Download and restore latest production data (one command)
 	fi; \
 	echo "🔧 Using Heroku app: $$HEROKU_APP"; \
 	echo "🛑 Step 1: Stopping backend service..."; \
-	docker-compose -f docker-compose.dev.yml stop discord-bot-dev; \
+	$(DOCKER_COMPOSE) stop discord-bot; \
 	echo "☁️  Step 2: Downloading latest backup from production..."; \
 	./scripts/heroku-backup.sh backup $$HEROKU_APP; \
 	echo "🔄 Step 3: Restoring to local development..."; \
 	./scripts/heroku-backup.sh restore $$HEROKU_APP; \
 	echo "🚀 Step 4: Starting all development services..."; \
-	docker-compose -f docker-compose.dev.yml up -d; \
+	$(DOCKER_COMPOSE) up -d; \
 	echo "✅ Local development now synced with production data!"
 
 list-backups: ## List available database backups
@@ -250,23 +201,23 @@ validate-env: ## Validate environment configuration
 
 # Development helpers
 shell: ## Open shell in the Discord bot container
-	docker-compose exec discord-tracker sh
+	$(DOCKER_COMPOSE) exec discord-bot sh
 
 shell-root: ## Open root shell in the Discord bot container
-	docker-compose exec -u root discord-tracker sh
+	$(DOCKER_COMPOSE) exec -u root discord-bot sh
 
-shell-dev: ## Open shell in the development bot container
-	docker-compose -f docker-compose.dev.yml exec discord-bot-dev sh
+shell-db: ## Open shell in the PostgreSQL container
+	$(DOCKER_COMPOSE) exec postgres sh
 
-shell-dev-root: ## Open root shell in the development bot container
-	docker-compose -f docker-compose.dev.yml exec -u root discord-bot-dev sh
+shell-db-root: ## Open root shell in the PostgreSQL container
+	$(DOCKER_COMPOSE) exec -u root postgres sh
 
 update: ## Update and rebuild the application
 	@echo "🔄 Updating application..."
 	git pull
-	docker-compose down
-	docker-compose build --no-cache
-	docker-compose up -d
+	$(DOCKER_COMPOSE) down
+	$(DOCKER_COMPOSE) build --no-cache
+	$(DOCKER_COMPOSE) up -d
 	@echo "✅ Application updated and restarted"
 
 # Quick start
@@ -277,21 +228,32 @@ dev-info: ## Show development workflow information
 	@echo ""
 	@echo "📦 Development Commands:"
 	@echo "  make quick-start          # Complete setup and start"
-	@echo "  make dev                  # Start standard development"
-	@echo "  make dev-hot              # Start development with hot reload"
+	@echo "  make dev                  # Start development with hot reload"
 	@echo "  make dev-detached         # Start development in background"
-	@echo "  make logs                 # View logs"
-	@echo "  make logs-dev             # View development container logs"
+	@echo "  make up                   # Start services in background"
+	@echo "  make down                 # Stop and remove all services"
+	@echo "  make logs                 # View logs from all services"
+	@echo "  make logs-bot             # View Discord bot logs only"
+	@echo "  make status               # Show service status"
+	@echo "  make health               # Check application health"
 	@echo ""
 	@echo "🔨 Building and Deployment:"
 	@echo "  make build                # Build images"
-	@echo "  make build-multiplatform  # Build for multiple architectures"
+	@echo "  make build-fast           # Fast build with cache"
 	@echo "  make prod                 # Start in production mode (with nginx)"
+	@echo "  make deploy               # Complete production deployment"
 	@echo ""
 	@echo "💾 Database Operations:"
 	@echo "  make backup               # Backup local PostgreSQL database"
-	@echo "  make restore              # Restore from backup"
+	@echo "  make restore BACKUP_FILE=filename  # Restore from backup"
 	@echo "  make sync-production      # Sync with Heroku production data"
+	@echo "  make list-backups         # List available backups"
+	@echo ""
+	@echo "🔧 Development Tools:"
+	@echo "  make shell                # Open shell in Discord bot container"
+	@echo "  make shell-db             # Open shell in PostgreSQL container"
+	@echo "  make validate-env         # Check environment configuration"
+	@echo "  make update               # Update and rebuild application"
 	@echo ""
 	@echo "🚀 Production Deployment:"
 	@echo "  make heroku-validate      # Test if ready for Heroku deployment"
@@ -315,25 +277,25 @@ ssl-init: ## Initialize SSL certificates (requires DOMAIN and EMAIL environment 
 	@echo "Domain: $(DOMAIN)"
 	@echo "Email: $(EMAIL)"
 	@echo "Staging: $(STAGING)"
-	docker-compose --profile production run --rm certbot sh -c "DOMAINS=$(DOMAIN) EMAIL=$(EMAIL) STAGING=$(STAGING) /scripts/init-letsencrypt.sh"
+	$(DOCKER_COMPOSE) --profile production run --rm certbot sh -c "DOMAINS=$(DOMAIN) EMAIL=$(EMAIL) STAGING=$(STAGING) /scripts/init-letsencrypt.sh"
 
 ssl-renew: ## Manually renew SSL certificates
 	@echo "🔄 Renewing SSL certificates..."
-	docker-compose --profile production exec certbot /scripts/renew-certs.sh
+	$(DOCKER_COMPOSE) --profile production exec certbot /scripts/renew-certs.sh
 
 ssl-status: ## Check SSL certificate status
 	@echo "📋 SSL Certificate Status:"
-	docker-compose --profile production exec certbot certbot certificates
+	$(DOCKER_COMPOSE) --profile production exec certbot certbot certificates
 
 ssl-test: ## Test SSL certificate renewal (dry run)
 	@echo "🧪 Testing SSL certificate renewal..."
-	docker-compose --profile production exec certbot certbot renew --dry-run
+	$(DOCKER_COMPOSE) --profile production exec certbot certbot renew --dry-run
 
 configure-domain: ## Configure nginx for specific domain (requires DOMAIN)
 	@echo "🔧 Configuring domain..."
 	@if [ -z "$(DOMAIN)" ]; then echo "❌ Please specify DOMAIN=your-domain.com"; exit 1; fi
-	docker-compose --profile production exec nginx sh -c "DOMAIN=$(DOMAIN) /scripts/configure-domain.sh $(DOMAIN)"
-	docker-compose --profile production restart nginx
+	$(DOCKER_COMPOSE) --profile production exec nginx sh -c "DOMAIN=$(DOMAIN) /scripts/configure-domain.sh $(DOMAIN)"
+	$(DOCKER_COMPOSE) --profile production restart nginx
 
 ssl-setup-complete: ## Complete SSL setup process (requires DOMAIN and EMAIL)
 	@echo "🚀 Complete SSL Setup Process"
@@ -353,24 +315,24 @@ ssl-setup-complete: ## Complete SSL setup process (requires DOMAIN and EMAIL)
 ssl-remove: ## Remove all SSL certificates (DANGER: destructive operation)
 	@echo "⚠️  WARNING: This will remove ALL SSL certificates!"
 	@read -p "Are you sure? (yes/no): " confirm; [ "$$confirm" = "yes" ] || exit 1
-	docker-compose --profile production exec certbot rm -rf /etc/letsencrypt/live /etc/letsencrypt/archive /etc/letsencrypt/renewal
+	$(DOCKER_COMPOSE) --profile production exec certbot rm -rf /etc/letsencrypt/live /etc/letsencrypt/archive /etc/letsencrypt/renewal
 	@echo "🗑️  SSL certificates removed"
 
 ssl-logs: ## Show certbot logs
 	@echo "📋 Certbot logs:"
-	docker-compose --profile production logs certbot
+	$(DOCKER_COMPOSE) --profile production logs certbot
 
 # Heroku deployment commands
 heroku-validate: ## Validate that the app builds correctly for Heroku
 	@echo "🔍 Validating Heroku deployment readiness..."
 	@echo "📦 Testing Docker build process..."
-	docker-compose build
+	$(DOCKER_COMPOSE) build
 	@echo "✅ Docker build successful!"
 	@echo "📋 Checking container functionality..."
-	@docker-compose up -d
+	@$(DOCKER_COMPOSE) up -d
 	@sleep 10
 	@curl -f http://localhost:3000/api/health >/dev/null 2>&1 && echo "✅ Health check passed" || echo "❌ Health check failed"
-	@docker-compose down
+	@$(DOCKER_COMPOSE) down
 	@echo "🎉 Ready for Heroku deployment!"
 
 heroku-deploy: ## Deploy to Heroku (requires APP_NAME parameter)

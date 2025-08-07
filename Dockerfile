@@ -29,12 +29,28 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install dependencies based on NODE_ENV
+ARG NODE_ENV=production
+ENV NODE_ENV=${NODE_ENV}
+RUN if [ "$NODE_ENV" = "development" ]; then \
+      npm ci && npm cache clean --force; \
+    else \
+      npm ci --only=production && npm cache clean --force; \
+    fi
 
-# Copy built application from builder stage
+# Copy application files based on mode
+RUN if [ "$NODE_ENV" = "development" ]; then \
+      echo "Development mode: copying source files"; \
+    else \
+      echo "Production mode: copying built files"; \
+    fi
+
+# Copy built application from builder stage (production)
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
+
+# Copy source files for development
+COPY . .
 
 # Create a non-root user for security
 RUN addgroup -g 1001 -S nodejs
@@ -56,4 +72,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
 # Use dumb-init for proper signal handling and start the application
-CMD ["dumb-init", "node", "dist/index.js"]
+CMD ["sh", "-c", "if [ \"$NODE_ENV\" = \"development\" ]; then dumb-init npm run dev; else dumb-init node dist/index.js; fi"]

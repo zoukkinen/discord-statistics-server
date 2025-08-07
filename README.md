@@ -36,66 +36,29 @@ This project is designed to run exclusively in containers for maximum compatibil
 
 **Quick deployment:**
 ```bash
-# Linux/macOS/WSL:
-./setup.sh
-make dev
-
-# Windows (PowerShell/Command Prompt):
-setup.bat
-# Then follow the displayed instructions
+# All platforms (Linux/macOS/WSL/Windows):
+make setup      # Create .env file
+# Edit .env with your Discord credentials
+make dev        # Start development environment
 ```
 
 ### Platform-Specific Instructions
 
-#### Windows with WSL (Recommended)
+#### All Platforms (Unified Process)
 ```bash
-# 1. Open WSL terminal
-wsl
+# 1. Setup environment
+make setup
 
-# 2. Run setup
-./setup.sh
+# 2. Configure your Discord credentials
+# Edit the .env file with your bot token and server ID
+nano .env  # or use any text editor
 
-# 3. Configure environment
-nano .env
-
-# 4. Start application
-make dev
+# 3. Start the application
+make dev   # Development mode
+make prod  # Production mode (with nginx)
 ```
 
-#### Windows without WSL
-```cmd
-REM 1. Run Windows setup
-setup.bat
-
-REM 2. Configure environment (edit .env file)
-
-REM 3. Start application
-docker-compose up --build
-```
-
-#### macOS (Intel and Apple Silicon)
-```bash
-# 1. Run setup (automatically detects ARM64/AMD64)
-./setup.sh
-
-# 2. Configure environment
-nano .env
-
-# 3. Start application
-make dev
-```
-
-#### Linux
-```bash
-# 1. Run setup
-./setup.sh
-
-# 2. Configure environment
-nano .env
-
-# 3. Start application
-make dev
-```
+The Makefile automatically detects your platform (Windows/WSL, macOS Intel/ARM64, Linux) and applies the appropriate optimizations.
 
 ### Option 2: Docker Deployment (Manual)
 
@@ -122,31 +85,34 @@ make prod
 make help              # Show all available commands
 make platform-info     # Show platform information
 
+# Setup
+make setup             # Create .env file from template
+make validate-env      # Validate environment configuration
+
 # Development
 make dev               # Start in development mode
-make dev-hot           # Start development with hot reload
-make dev-detached      # Start development in background
-make stop-dev          # Stop development environment
+make up                # Start containers
+make down              # Stop containers
+make restart           # Restart all services
 
 # Production
 make prod              # Start in production mode (with nginx)
 make build             # Build Docker images
-make build-multiplatform # Build for multiple architectures
 
 # Monitoring
 make logs              # View all logs
-make logs-dev          # View development logs
+make logs-bot          # View Discord bot logs
 make status            # Check service status
-make health            # Health check
 
-# Database
+# Database Operations
 make backup            # Backup PostgreSQL database
-make restore           # Restore from backup
+make restore           # Restore from backup (specify BACKUP_FILE=filename)
+make list-backups      # List available backups
 make sync-production   # Sync with Heroku production data
 
-# Maintenance
-make clean             # Clean up (destructive)
-make wsl-setup         # WSL-specific optimizations
+# Cleanup
+make clean             # Remove containers, images, and data (destructive)
+make clean-soft        # Remove containers only (keeps data)
 ```
 
 **Alternative: Manual Container Setup**
@@ -224,17 +190,11 @@ EVENT_DESCRIPTION=Discord activity tracking for Your Event Name 2025
 # Start all services for development
 make dev
 
-# Start with hot reload (recommended for development)
-make dev-hot
-
-# Start in background
-make dev-detached
-
 # View development logs
-make logs-dev
+make logs
 
-# Stop development services
-make stop-dev
+# Stop services
+make down
 ```
 
 ### Production Mode
@@ -245,8 +205,8 @@ make prod
 # Check status
 make status
 
-# View logs
-make logs-nginx
+# View production logs
+make logs
 ```
 
 ### SSL/HTTPS Setup
@@ -324,32 +284,24 @@ make restore BACKUP_FILE=discord_stats_20250730_120000.sql
 | `make setup` | Create .env from template |
 | `make quick-start` | Complete setup and start development |
 | `make dev` | Start in development mode |
-| `make dev-hot` | Start development with hot reload |
-| `make dev-detached` | Start development in background |
-| `make stop-dev` | Stop development environment |
 | `make prod` | Start in production mode (with nginx) |
 | `make build` | Build Docker images |
-| `make build-multiplatform` | Build for multiple architectures |
 | `make up` | Start services (detached) |
 | `make down` | Stop all services |
 | `make restart` | Restart all services |
 | `make logs` | View all logs |
-| `make logs-dev` | View development logs |
-| `make logs-dev-backend` | View development backend logs |
-| `make logs-dev-frontend` | View development frontend logs |
+| `make logs-bot` | View Discord bot logs |
 | `make status` | Check service status |
-| `make status-dev` | Check development service status |
-| `make health` | Health check |
 | `make backup` | Backup PostgreSQL database |
-| `make restore` | Restore from backup |
+| `make restore` | Restore from backup (specify BACKUP_FILE=filename) |
 | `make sync-production` | Sync with Heroku production data |
 | `make list-backups` | List available backups |
-| `make clean` | Remove all containers/images |
+| `make clean` | Remove all containers/images/data (destructive) |
 | `make clean-soft` | Remove containers only (keep data) |
-| `make shell` | Open shell in container |
-| `make shell-dev` | Open shell in development container |
-| `make update` | Update and redeploy |
+| `make shell` | Open shell in Discord bot container |
+| `make shell-db` | Open shell in PostgreSQL container |
 | `make validate-env` | Validate environment configuration |
+| `make setup` | Create .env file from template |
 
 ### SSL/Certificate Commands
 
@@ -369,12 +321,11 @@ make restore BACKUP_FILE=discord_stats_20250730_120000.sql
 | Command | Description |
 |---------|-------------|
 | `make heroku-deploy APP_NAME=your-app` | Deploy to Heroku |
+| `make heroku-validate` | Test app builds correctly for Heroku |
 | `make heroku-logs APP_NAME=your-app` | View Heroku logs |
 | `make heroku-status APP_NAME=your-app` | Check app status |
 | `make heroku-restart APP_NAME=your-app` | Restart Heroku app |
-| `make heroku-health APP_NAME=your-app` | Health check |
 | `make heroku-open APP_NAME=your-app` | Open app in browser |
-| `make heroku-setup` | Show setup guide |
 
 ### Custom Domain Commands
 
@@ -396,9 +347,9 @@ This project uses a **container-first approach** for both development and produc
 make quick-start
 
 # 2. Daily development workflow
-make dev-hot           # Start with hot reload
-make logs-dev          # Monitor logs
-make stop-dev          # Stop when done
+make dev               # Start development environment
+make logs              # Monitor logs
+make down              # Stop when done
 
 # 3. Database operations
 make backup            # Backup your local data
@@ -440,10 +391,10 @@ make restore BACKUP_FILE=local_backup_20250807_120000.sql
 
 The Makefile automatically detects your platform and applies optimizations:
 
-- **WSL**: Uses Docker BuildKit optimizations
-- **Apple Silicon**: Builds ARM64-compatible images
-- **Linux**: Standard Docker operations
-- **Multi-platform**: `make build-multiplatform` for cross-platform builds
+- **WSL**: Automatically includes WSL-specific optimizations via `docker-compose.wsl.yml`
+- **Apple Silicon**: Automatically includes ARM64 optimizations via `docker-compose.arm64.yml`
+- **Linux**: Uses standard Docker operations with base `docker-compose.yml`
+- **Cross-platform**: All builds work across platforms automatically
 
 ## 🤖 Discord Bot Setup
 
@@ -509,17 +460,17 @@ Your bot needs the following permissions:
 All development happens in Docker containers for consistency and isolation:
 
 ```bash
-# Start development environment with hot reload
-make dev-hot
+# Start development environment
+make dev
 
 # View logs in real-time
-make logs-dev
+make logs
 
-# Open shell in development container
-make shell-dev
+# Open shell in container
+make shell
 
-# Stop development environment
-make stop-dev
+# Stop environment
+make down
 ```
 
 ### Development Commands
@@ -529,12 +480,10 @@ make stop-dev
 make quick-start          # Creates .env and starts development
 
 # Daily development workflow
-make dev-hot              # Hot reload development
-make dev-detached         # Background development
-make logs-dev             # Monitor all development logs
-make logs-dev-backend     # Monitor backend only
-make logs-dev-frontend    # Monitor frontend only
-make status-dev           # Check container status
+make dev                  # Start development environment  
+make logs                 # Monitor all logs
+make logs-bot             # Monitor Discord bot only
+make status               # Check container status
 
 # Database operations
 make backup               # Backup local PostgreSQL
@@ -558,9 +507,10 @@ frontend/
 public/
 └── index.html        # Fallback static dashboard
 
-docker-compose.yml          # Production containers
-docker-compose.dev.yml      # Development containers  
-Makefile                    # Container orchestration
+docker-compose.yml          # Main containers (dev & prod)
+docker-compose.wsl.yml      # WSL-specific optimizations
+docker-compose.arm64.yml    # ARM64-specific optimizations
+Makefile                    # Container orchestration & commands
 ```
 
 ### Environment Variables
@@ -575,14 +525,14 @@ Makefile                    # Container orchestration
 | `EVENT_END_DATE` | Event end date (ISO 8601) | 2025-08-03T23:59:59+03:00 |
 | `DATABASE_URL` | PostgreSQL connection URL | Auto-configured for containers |
 
-### Hot Reload Development
+### Development Workflow
 
-The development environment supports hot reload for both backend and frontend:
+The development environment provides:
 
 - **Backend**: TypeScript compilation and Node.js restart on file changes
-- **Frontend**: Vite dev server with instant browser updates
+- **Frontend**: Vite dev server with instant browser updates  
 - **Database**: Persistent PostgreSQL data across container restarts
-- **Environment**: Changes to `.env` require container restart (`make stop-dev && make dev-hot`)
+- **Environment**: Changes to `.env` require container restart (`make restart`)
 
 ## 📈 Data Collection
 
@@ -639,34 +589,28 @@ This project is specifically designed for the Assembly summer 2025 event. The da
 
 ### Platform-Specific Issues
 
+### Platform-Specific Issues
+
 #### Windows WSL Issues
 ```bash
-# If Docker commands are slow:
-make wsl-setup
-
 # If you get permission errors:
 sudo chown -R $USER:$USER /path/to/project
 
-# If builds are slow, enable BuildKit:
-export DOCKER_BUILDKIT=1
-export COMPOSE_DOCKER_CLI_BUILD=1
+# If builds are slow, the Makefile automatically applies WSL optimizations
+# including Docker BuildKit settings
 ```
 
 #### macOS Issues
 ```bash
-# If you get architecture errors on Apple Silicon:
-make build-multiplatform
-
 # If containers don't start:
 docker system prune -f
 make build
+
+# The Makefile automatically detects Apple Silicon and applies ARM64 optimizations
 ```
 
 #### Windows (without WSL) Issues
 ```cmd
-REM If you get "docker-compose not found":
-docker compose up --build
-
 REM If port 3000 is in use:
 netstat -ano | findstr :3000
 REM Kill the process using the port
@@ -689,16 +633,16 @@ docker system prune -f
 
 #### For WSL Users
 - Use named volumes (already configured)
-- Enable BuildKit: `make wsl-setup`
+- BuildKit optimizations are applied automatically by the Makefile
 - Store project files in WSL filesystem, not Windows
 
 #### For Apple Silicon Users
-- Multi-arch builds are automatic
-- Use `make build-multiplatform` for explicit cross-platform builds
+- Multi-arch builds are handled automatically by the Makefile
+- ARM64 optimizations are applied automatically via platform detection
 
 #### For All Platforms
 - Use `make prod` for production deployment with nginx
-- Monitor with `make status` and `make health`
+- Monitor with `make status` and `make logs`
 - Regular backups with `make backup`
 
 ### Logs
