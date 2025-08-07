@@ -1,4 +1,4 @@
-.PHONY: help build up down logs restart status clean dev prod backup restore platform-info dev-detached shell shell-root heroku-validate heroku-backup heroku-restore sync-production list-backups
+.PHONY: help build up down logs restart status clean dev prod backup restore platform-info dev-detached shell shell-root heroku-validate heroku-backup heroku-restore sync-production list-backups rebuild
 
 # Detect platform for better compatibility
 UNAME_S := $(shell uname -s)
@@ -65,6 +65,13 @@ build: ## Build the Docker image
 build-fast: ## Fast build with cache and single platform
 	@echo "⚡ Fast building for current platform only..."
 	$(DOCKER_COMPOSE) build --parallel
+
+rebuild: ## Force rebuild from scratch (no cache) and restart
+	@echo "🔨 Force rebuilding from scratch..."
+	$(DOCKER_COMPOSE) down
+	$(DOCKER_COMPOSE) build --no-cache --parallel
+	$(DOCKER_COMPOSE) up -d
+	@echo "✅ Application rebuilt and restarted"
 
 # Local Development (Container-First)
 dev-detached: ## Start development environment in background
@@ -240,6 +247,7 @@ dev-info: ## Show development workflow information
 	@echo "🔨 Building and Deployment:"
 	@echo "  make build                # Build images"
 	@echo "  make build-fast           # Fast build with cache"
+	@echo "  make rebuild              # Force rebuild from scratch (no cache)"
 	@echo "  make prod                 # Start in production mode (with nginx)"
 	@echo "  make deploy               # Complete production deployment"
 	@echo ""

@@ -30,6 +30,7 @@ export interface DatabaseAdapter {
     
     // Event management
     createEvent(event: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>): Promise<Event>;
+    getEvent(id: number): Promise<Event | null>;
     getEvents(guildId: string): Promise<Event[]>;
     getActiveEvent(guildId: string): Promise<Event | null>;
     updateEvent(id: number, updates: Partial<Event>): Promise<Event>;

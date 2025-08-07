@@ -215,6 +215,26 @@ export class WebServer {
             }
         });
 
+        // Get specific event by ID
+        this.app.get('/api/events/:id', async (req, res) => {
+            try {
+                const eventId = parseInt(req.params.id);
+                if (isNaN(eventId)) {
+                    return res.status(400).json({ error: 'Invalid event ID' });
+                }
+                
+                const event = await this.database.getEvent(eventId);
+                if (!event) {
+                    return res.status(404).json({ error: 'Event not found' });
+                }
+                
+                res.json(this.transformEventToCamelCase(event));
+            } catch (error) {
+                console.error('Error fetching event:', error);
+                res.status(500).json({ error: 'Failed to fetch event' });
+            }
+        });
+
         // Create new event
         this.app.post('/api/events', async (req, res) => {
             try {

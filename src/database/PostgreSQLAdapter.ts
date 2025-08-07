@@ -531,6 +531,22 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     public async createEvent(event: any): Promise<any> {
         if (!this.client) throw new Error('Database not initialized');
         
+        // Handle both camelCase (from API) and snake_case field names
+        const startDate = event.startDate || event.start_date;
+        const endDate = event.endDate || event.end_date;
+        const guildId = event.guildId || event.guild_id;
+        const isActive = event.isActive !== undefined ? event.isActive : event.is_active || false;
+        
+        console.log('Creating event with data:', {
+            name: event.name,
+            description: event.description,
+            startDate: startDate,
+            endDate: endDate,
+            timezone: event.timezone,
+            guildId: guildId,
+            isActive: isActive
+        });
+        
         const result = await this.client.query(`
             INSERT INTO events (name, description, start_date, end_date, timezone, guild_id, is_active)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -538,11 +554,11 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
         `, [
             event.name,
             event.description,
-            event.start_date,
-            event.end_date,
+            startDate, // Properly mapped camelCase to snake_case
+            endDate,   // Properly mapped camelCase to snake_case
             event.timezone,
-            event.guild_id,
-            event.is_active || false
+            guildId,   // Properly mapped camelCase to snake_case
+            isActive   // Properly mapped camelCase to snake_case
         ]);
         
         return result.rows[0];
@@ -558,6 +574,17 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
         `, [guildId]);
         
         return result.rows;
+    }
+
+    public async getEvent(id: number): Promise<any> {
+        if (!this.client) throw new Error('Database not initialized');
+        
+        const result = await this.client.query(`
+            SELECT * FROM events 
+            WHERE id = $1
+        `, [id]);
+        
+        return result.rows[0] || null;
     }
 
     public async getActiveEvent(guildId: string): Promise<any> {

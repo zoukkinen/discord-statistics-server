@@ -138,9 +138,11 @@ const App: Component = () => {
   // Render admin interface or dashboard based on route
   console.log('Rendering with route:', currentRoute());
   console.log('Current pathname:', window.location.pathname);
+  console.log('Is admin path?', window.location.pathname === '/admin');
   
   // Render admin interface or dashboard based on route
   if (window.location.pathname === '/admin') {
+    console.log('Should render EventManager');
     return <EventManager />;
   }
   

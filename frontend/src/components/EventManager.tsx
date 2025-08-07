@@ -74,6 +74,9 @@ const EventManager: Component = () => {
     const start = new Date(data.startDate);
     const end = new Date(data.endDate);
     
+    if (isNaN(start.getTime())) return 'Invalid start date';
+    if (isNaN(end.getTime())) return 'Invalid end date';
+    
     if (start >= end) return 'Start date must be before end date';
     return null;
   };
@@ -91,16 +94,28 @@ const EventManager: Component = () => {
     
     try {
       const data = formData();
+      
+      // Additional safety check for date validity
+      const start = new Date(data.startDate);
+      const end = new Date(data.endDate);
+      
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        showMessage('Invalid date values detected', 'error');
+        return;
+      }
+      
+      const payload = {
+        name: data.name.trim(),
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+        timezone: data.timezone,
+        description: data.description.trim() || undefined
+      };
+      
       const response = await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: data.name.trim(),
-          startDate: new Date(data.startDate).toISOString(),
-          endDate: new Date(data.endDate).toISOString(),
-          timezone: data.timezone,
-          description: data.description.trim() || undefined
-        })
+        body: JSON.stringify(payload)
       });
 
       const result = await response.json();
