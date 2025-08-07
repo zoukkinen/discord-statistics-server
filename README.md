@@ -138,12 +138,31 @@ If you prefer to set up containers manually without the automated scripts:
    WEB_PORT=3000
    ```
 
-## 🎯 Event Configuration
+## 🎯 Event Management
 
-This tracker can be easily configured for any event! By default, it's set up for Assembly Summer 2025, but you can customize it for your own event by adding these environment variables to your `.env` file:
+This tracker supports **dynamic event management** through an intuitive admin interface! You can create, manage, and switch between multiple events without restarting the system.
+
+### 🆕 Admin Interface (Recommended)
+
+**Easy Setup**: After installation, navigate to `/admin` in your browser:
+- **Local Development**: http://localhost:5173/admin
+- **Production**: https://yourdomain.com/admin
+
+**Features**:
+- ✅ Create new events with custom dates and descriptions
+- ✅ Switch active events instantly
+- ✅ View event history and statistics
+- ✅ Edit existing event details
+- ✅ No server restart required
+
+### 📋 Legacy Environment Configuration (Deprecated)
+
+> **⚠️ Note**: Environment variables are now deprecated in favor of the admin interface. They're kept for backwards compatibility and initial setup only.
+
+For the initial default event, the system uses Assembly Summer 2025 configuration. If you need to override this during first setup, you can still use:
 
 ```env
-# Event Configuration
+# ⚠️ DEPRECATED: Use /admin interface instead
 EVENT_NAME=Your Event Name 2025
 EVENT_START_DATE=2025-12-01T09:00:00Z
 EVENT_END_DATE=2025-12-05T18:00:00Z
@@ -151,23 +170,13 @@ EVENT_TIMEZONE=Europe/London
 EVENT_DESCRIPTION=Discord activity tracking for Your Event Name 2025
 ```
 
-### Event Configuration Options
+### 🎨 Multiple Event Support
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `EVENT_NAME` | Name of your event | `"GameJam 2025"` |
-| `EVENT_START_DATE` | Event start date and time (ISO 8601) | `"2025-12-01T09:00:00Z"` |
-| `EVENT_END_DATE` | Event end date and time (ISO 8601) | `"2025-12-05T18:00:00Z"` |
-| `EVENT_TIMEZONE` | Timezone for date display | `"Europe/London"`, `"America/New_York"` |
-| `EVENT_DESCRIPTION` | Brief description of your event | `"Gaming competition tracking"` |
-
-### Popular Timezone Examples
-- `Europe/London` (GMT/BST)
-- `Europe/Helsinki` (EET/EEST) 
-- `America/New_York` (EST/EDT)
-- `America/Los_Angeles` (PST/PDT)
-- `Asia/Tokyo` (JST)
-- `Australia/Sydney` (AEST/AEDT)
+With the new system, you can:
+- **Track multiple events** over time
+- **Compare statistics** between different events
+- **Maintain historical data** for all your events
+- **Switch contexts** easily without data loss
 
 **Note:** The dashboard will automatically update its title, dates, and all references to use your configured event details!
 
@@ -520,10 +529,9 @@ Makefile                    # Container orchestration & commands
 | `DISCORD_TOKEN` | Your Discord bot token | Required |
 | `DISCORD_GUILD_ID` | Your Discord server ID | Required |
 | `WEB_PORT` | Port for the web dashboard | 3000 |
-| `EVENT_NAME` | Name of your event | Assembly Summer 2025 |
-| `EVENT_START_DATE` | Event start date (ISO 8601) | 2025-07-31T00:00:00+03:00 |
-| `EVENT_END_DATE` | Event end date (ISO 8601) | 2025-08-03T23:59:59+03:00 |
 | `DATABASE_URL` | PostgreSQL connection URL | Auto-configured for containers |
+
+> **📝 Note**: Event configuration (`EVENT_NAME`, `EVENT_START_DATE`, etc.) has been **moved to the admin interface** at `/admin`. Environment variables are no longer needed for event setup!
 
 ### Development Workflow
 
