@@ -80,7 +80,7 @@ self.addEventListener('fetch', (event) => {
 </head>
 <body>
   <div class="offline">
-    <h1>🎮 Discord Stats</h1>
+    <h1>🎮 Discord Activity Tracker</h1>
     <h2>You're Offline</h2>
     <p>The app will work normally once you're back online.</p>
     <button onclick="window.location.reload()">Retry</button>
