@@ -50,11 +50,7 @@ services:
       - DB_USER=${DB_USER:-discord_bot}
       - DB_PASSWORD=${DB_PASSWORD:-dev_password}
       - NODE_ENV=${NODE_ENV:-development}
-      - EVENT_NAME=${EVENT_NAME:-Assembly Summer 2025}
-      - EVENT_START_DATE=${EVENT_START_DATE:-2025-07-31T07:00:00Z}
-      - EVENT_END_DATE=${EVENT_END_DATE:-2025-08-03T13:00:00Z}
-      - EVENT_TIMEZONE=${EVENT_TIMEZONE:-Europe/Helsinki}
-      - EVENT_DESCRIPTION=${EVENT_DESCRIPTION:-Discord activity tracking for Assembly Summer 2025}
+      # NOTE: Event configuration is now managed through the admin interface at /admin
     volumes:
       - discord_data:/app/data
       # Development: Mount source files for hot reload and serving

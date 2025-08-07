@@ -8,36 +8,52 @@ import RecentActivity from './components/RecentActivity';
 import Charts from './components/Charts';
 import InfoModal from './components/InfoModal';
 import InstallButton from './components/InstallButton';
+import EventManager from './components/EventManager';
 import { statsStore } from './stores/statsStore';
 import { configStore } from './stores/configStore';
+import './styles/eventManager.css';
 
 const App: Component = () => {
   const [isLoading, setIsLoading] = createSignal(true);
   const [showRecentActivity, setShowRecentActivity] = createSignal(false);
+  
+  // Create a reactive signal for the current route
+  const [currentRoute, setCurrentRoute] = createSignal(
+    window.location.pathname === '/admin' ? 'admin' : 'dashboard'
+  );
+  
   let refreshInterval: NodeJS.Timeout;
   let updateInterval: NodeJS.Timeout;
 
+  const updateRoute = () => {
+    const path = window.location.pathname;
+    if (path === '/admin') {
+      setCurrentRoute('admin');
+    } else {
+      setCurrentRoute('dashboard');
+    }
+  };
+
   onMount(async () => {
+    // Set initial route
+    updateRoute();
+    
+    // Force another route update after a short delay to ensure it's detected
+    setTimeout(updateRoute, 100);
+    
+    // Listen for route changes
+    window.addEventListener('popstate', updateRoute);
+    
     // Check URL parameters for recent activity display
     const urlParams = new URLSearchParams(window.location.search);
     setShowRecentActivity(urlParams.get('activity') === 'show');
     
-    // Initialize configuration
-    await configStore.loadConfig();
-    
-    // Load initial data
-    await statsStore.fetchCurrentStats();
-    await statsStore.fetchTopGames();
-    
-    // Only fetch recent activity if it should be shown
-    if (showRecentActivity()) {
-      await statsStore.fetchRecentActivity();
-    }
-    
-    setIsLoading(false);
-
-    // Setup refresh interval
-    refreshInterval = setInterval(async () => {
+    // Only load dashboard data if not on admin page
+    if (currentRoute() === 'dashboard') {
+      // Initialize configuration
+      await configStore.loadConfig();
+      
+      // Load initial data
       await statsStore.fetchCurrentStats();
       await statsStore.fetchTopGames();
       
@@ -45,7 +61,22 @@ const App: Component = () => {
       if (showRecentActivity()) {
         await statsStore.fetchRecentActivity();
       }
-    }, 15000); // 15 seconds
+    }
+    
+    setIsLoading(false);
+
+    // Setup refresh interval only for dashboard
+    if (currentRoute() === 'dashboard') {
+      refreshInterval = setInterval(async () => {
+        await statsStore.fetchCurrentStats();
+        await statsStore.fetchTopGames();
+        
+        // Only fetch recent activity if it should be shown
+        if (showRecentActivity()) {
+          await statsStore.fetchRecentActivity();
+        }
+      }, 15000); // 15 seconds
+    }
 
     // Register service worker with enhanced update handling
     if ('serviceWorker' in navigator) {
@@ -95,6 +126,7 @@ const App: Component = () => {
   });
 
   onCleanup(() => {
+    window.removeEventListener('popstate', updateRoute);
     if (refreshInterval) {
       clearInterval(refreshInterval);
     }
@@ -103,6 +135,15 @@ const App: Component = () => {
     }
   });
 
+  // Render admin interface or dashboard based on route
+  console.log('Rendering with route:', currentRoute());
+  console.log('Current pathname:', window.location.pathname);
+  
+  // Render admin interface or dashboard based on route
+  if (window.location.pathname === '/admin') {
+    return <EventManager />;
+  }
+  
   return (
     <div class="app">
       <Header />

@@ -12,6 +12,28 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Platform detection (same as Makefile)
+UNAME_S=$(uname -s)
+UNAME_M=$(uname -m)
+
+# WSL detection
+WSL_DETECTED="false"
+if [ -f /proc/version ] && grep -qi microsoft /proc/version; then
+    WSL_DETECTED="true"
+fi
+
+# Determine compose files based on platform (same logic as Makefile)
+COMPOSE_FILES="-f docker-compose.yml"
+
+if [ "$WSL_DETECTED" = "true" ]; then
+    COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.wsl.yml"
+elif [ "$UNAME_M" = "arm64" ]; then
+    COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.arm64.yml"
+fi
+
+# Docker compose command with platform files (same as Makefile)
+DOCKER_COMPOSE="docker-compose $COMPOSE_FILES"
+
 echo -e "${BLUE}💾 Assembly Discord Tracker - Heroku PostgreSQL Backup${NC}"
 echo "======================================================="
 
@@ -131,15 +153,15 @@ restore_to_postgres() {
     echo "Source: $LATEST_BACKUP"
     
     # Check if development containers are running
-    if ! docker-compose -f docker-compose.dev.yml ps postgres-dev | grep -q "Up"; then
+    if ! $DOCKER_COMPOSE ps postgres | grep -q "Up"; then
         echo -e "${YELLOW}⚠️  PostgreSQL container not running. Starting development environment...${NC}"
-        docker-compose -f docker-compose.dev.yml up -d postgres-dev
+        $DOCKER_COMPOSE up -d postgres
         
         # Wait for PostgreSQL to be ready
         echo -e "${BLUE}⏳ Waiting for PostgreSQL to be ready...${NC}"
         timeout=60
         while [ $timeout -gt 0 ]; do
-            if docker-compose -f docker-compose.dev.yml exec -T postgres-dev pg_isready -U discord_bot -d discord_stats >/dev/null 2>&1; then
+            if $DOCKER_COMPOSE exec -T postgres pg_isready -U discord_bot -d discord_stats >/dev/null 2>&1; then
                 break
             fi
             sleep 2
@@ -157,48 +179,48 @@ restore_to_postgres() {
     # Create a backup of current data before restore
     echo -e "${YELLOW}� Creating backup of current local data...${NC}"
     LOCAL_BACKUP="backups/local_backup_$(date +%Y%m%d_%H%M%S).sql"
-    docker-compose -f docker-compose.dev.yml exec -T postgres-dev pg_dump -U discord_bot -d discord_stats > "$LOCAL_BACKUP"
+    $DOCKER_COMPOSE exec -T postgres pg_dump -U discord_bot -d discord_stats > "$LOCAL_BACKUP"
     echo -e "${GREEN}✅ Local backup created: $LOCAL_BACKUP${NC}"
     
     # Drop and recreate the database to ensure clean restore
     echo -e "${BLUE}🗑️  Preparing database for restore...${NC}"
-    docker-compose -f docker-compose.dev.yml exec -T postgres-dev psql -U discord_bot -d postgres -c "DROP DATABASE IF EXISTS discord_stats;"
-    docker-compose -f docker-compose.dev.yml exec -T postgres-dev psql -U discord_bot -d postgres -c "CREATE DATABASE discord_stats;"
+    $DOCKER_COMPOSE exec -T postgres psql -U discord_bot -d postgres -c "DROP DATABASE IF EXISTS discord_stats;"
+    $DOCKER_COMPOSE exec -T postgres psql -U discord_bot -d postgres -c "CREATE DATABASE discord_stats;"
     
     # Restore the Heroku backup
     echo -e "${BLUE}📥 Restoring Heroku backup...${NC}"
     
     # Stop the backend to release database connections
     echo -e "${YELLOW}⏹️  Stopping backend to release database connections...${NC}"
-    docker-compose -f docker-compose.dev.yml stop discord-bot-dev 2>/dev/null || true
+    $DOCKER_COMPOSE stop discord-bot 2>/dev/null || true
     
     # Copy backup into container and restore
-    docker cp "$LATEST_BACKUP" assembly-postgres-dev:/tmp/backup.sql
-    docker exec assembly-postgres-dev pg_restore -U discord_bot -d discord_stats --verbose --clean --no-acl --no-owner /tmp/backup.sql
+    docker cp "$LATEST_BACKUP" assembly-postgres:/tmp/backup.sql
+    docker exec assembly-postgres pg_restore -U discord_bot -d discord_stats --verbose --clean --no-acl --no-owner /tmp/backup.sql
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Heroku backup restored successfully!${NC}"
         
         # Restart the backend to connect to the restored database
         echo -e "${BLUE}🔄 Restarting backend service...${NC}"
-        docker-compose -f docker-compose.dev.yml start discord-bot-dev
+        $DOCKER_COMPOSE start discord-bot
         
         echo -e "${GREEN}🎉 Restore complete!${NC}"
         echo ""
         echo -e "${YELLOW}📋 What's next:${NC}"
         echo "• Your local development now has the production data from Heroku"
         echo "• Backend service has been restarted to connect to the restored database"
-        echo "• Visit http://localhost:5173 to see the restored data"
+        echo "• Visit http://localhost:3000 to see the restored data"
         echo "• Local backup saved to: $LOCAL_BACKUP"
     else
         echo -e "${RED}❌ Restore failed!${NC}"
         echo "Restoring local backup..."
-        docker-compose -f docker-compose.dev.yml exec -T postgres-dev psql -U discord_bot -d postgres -c "DROP DATABASE IF EXISTS discord_stats;"
-        docker-compose -f docker-compose.dev.yml exec -T postgres-dev psql -U discord_bot -d postgres -c "CREATE DATABASE discord_stats;"
-        docker-compose -f docker-compose.dev.yml exec -T postgres-dev psql -U discord_bot -d discord_stats < "$LOCAL_BACKUP"
+        $DOCKER_COMPOSE exec -T postgres psql -U discord_bot -d postgres -c "DROP DATABASE IF EXISTS discord_stats;"
+        $DOCKER_COMPOSE exec -T postgres psql -U discord_bot -d postgres -c "CREATE DATABASE discord_stats;"
+        $DOCKER_COMPOSE exec -T postgres psql -U discord_bot -d discord_stats < "$LOCAL_BACKUP"
         echo -e "${YELLOW}⚠️  Local backup restored${NC}"
         # Restart backend even if restore failed
-        docker-compose -f docker-compose.dev.yml start discord-bot-dev
+        $DOCKER_COMPOSE start discord-bot
         exit 1
     fi
 }

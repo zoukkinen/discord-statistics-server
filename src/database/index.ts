@@ -2,9 +2,9 @@ import { DatabaseAdapter } from './types';
 import { PostgreSQLAdapter } from './PostgreSQLAdapter';
 
 export class DatabaseFactory {
-    public static createAdapter(): DatabaseAdapter {
+    public static createAdapter(guildId?: string): DatabaseAdapter {
         console.log('🔌 Using PostgreSQL database adapter');
-        return new PostgreSQLAdapter();
+        return new PostgreSQLAdapter(guildId);
     }
 }
 

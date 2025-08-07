@@ -22,9 +22,9 @@ export class DiscordActivityBot {
             ]
         });
         
-        this.database = new Database();
-        this.webServer = new WebServer(this.database);
         this.guildId = process.env.DISCORD_GUILD_ID || '';
+        this.database = new Database(this.guildId);
+        this.webServer = new WebServer(this.database);
         
         this.setupEventHandlers();
     }
