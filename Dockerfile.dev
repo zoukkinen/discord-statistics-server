@@ -1,0 +1,24 @@
+# Development Dockerfile for hot reload
+FROM node:20-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install dependencies for development
+COPY package*.json ./
+RUN npm install
+
+# Install nodemon globally for hot reload
+RUN npm install -g nodemon ts-node
+
+# Copy source code (will be overridden by volume mount)
+COPY . .
+
+# Create data directory
+RUN mkdir -p data
+
+# Expose backend port
+EXPOSE 3000
+
+# Default command (can be overridden in docker-compose)
+CMD ["npm", "run", "dev:server"]

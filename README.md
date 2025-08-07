@@ -18,7 +18,9 @@ A Discord bot that monitors your Discord server's member activity and tracks wha
 
 ## 🚀 Quick Start
 
-### Option 1: Automated Setup (Recommended)
+### Container-First Approach
+
+This project is designed to run exclusively in containers for maximum compatibility and ease of deployment. All development and production environments use Docker containers.
 
 **Cross-platform compatibility:**
 - ✅ Windows (with WSL recommended)
@@ -119,23 +121,42 @@ make prod
 ```bash
 make help              # Show all available commands
 make platform-info     # Show platform information
+
+# Development
 make dev               # Start in development mode
-make prod              # Start in production mode
+make dev-hot           # Start development with hot reload
+make dev-detached      # Start development in background
+make stop-dev          # Stop development environment
+
+# Production
+make prod              # Start in production mode (with nginx)
+make build             # Build Docker images
 make build-multiplatform # Build for multiple architectures
-make wsl-setup         # WSL-specific optimizations
-make logs              # View logs
+
+# Monitoring
+make logs              # View all logs
+make logs-dev          # View development logs
 make status            # Check service status
-make backup            # Backup database
+make health            # Health check
+
+# Database
+make backup            # Backup PostgreSQL database
+make restore           # Restore from backup
+make sync-production   # Sync with Heroku production data
+
+# Maintenance
 make clean             # Clean up (destructive)
+make wsl-setup         # WSL-specific optimizations
 ```
 
-**Manual installation steps:**
+**Alternative: Manual Container Setup**
+
+If you prefer to set up containers manually without the automated scripts:
 
 1. **Clone and setup the project:**
    ```bash
    git clone <your-repo-url>
-   cd assembly-discord-tracker
-   npm install
+   cd discord-statistics-server
    ```
 
 2. **Create environment file:**
@@ -149,7 +170,6 @@ make clean             # Clean up (destructive)
    DISCORD_TOKEN=your_discord_bot_token_here
    DISCORD_GUILD_ID=your_discord_server_id_here
    WEB_PORT=3000
-   DATABASE_PATH=./data/discord_stats.db
    ```
 
 ## 🎯 Event Configuration
@@ -185,17 +205,16 @@ EVENT_DESCRIPTION=Discord activity tracking for Your Event Name 2025
 
 **Note:** The dashboard will automatically update its title, dates, and all references to use your configured event details!
 
-4. **Build the project:**
+4. **Start the containers:**
    ```bash
-   npm run build
+   # Start PostgreSQL and the app in development mode
+   docker-compose up
+   
+   # Or start in background
+   docker-compose up -d
    ```
 
-5. **Start the bot:**
-   ```bash
-   npm start
-   ```
-
-6. **Open the dashboard:**
+5. **Open the dashboard:**
    Visit `http://localhost:3000` in your browser
 
 ## 🐳 Docker Deployment
@@ -205,11 +224,17 @@ EVENT_DESCRIPTION=Discord activity tracking for Your Event Name 2025
 # Start all services for development
 make dev
 
-# View logs
-make logs
+# Start with hot reload (recommended for development)
+make dev-hot
 
-# Stop services
-make down
+# Start in background
+make dev-detached
+
+# View development logs
+make logs-dev
+
+# Stop development services
+make stop-dev
 ```
 
 ### Production Mode
@@ -297,20 +322,34 @@ make restore BACKUP_FILE=discord_stats_20250730_120000.sql
 |---------|-------------|
 | `make help` | Show all available commands |
 | `make setup` | Create .env from template |
+| `make quick-start` | Complete setup and start development |
 | `make dev` | Start in development mode |
-| `make prod` | Start in production mode |
+| `make dev-hot` | Start development with hot reload |
+| `make dev-detached` | Start development in background |
+| `make stop-dev` | Stop development environment |
+| `make prod` | Start in production mode (with nginx) |
 | `make build` | Build Docker images |
+| `make build-multiplatform` | Build for multiple architectures |
 | `make up` | Start services (detached) |
 | `make down` | Stop all services |
 | `make restart` | Restart all services |
 | `make logs` | View all logs |
-| `make logs-bot` | View bot logs only |
+| `make logs-dev` | View development logs |
+| `make logs-dev-backend` | View development backend logs |
+| `make logs-dev-frontend` | View development frontend logs |
 | `make status` | Check service status |
+| `make status-dev` | Check development service status |
 | `make health` | Health check |
-| `make backup` | Backup database |
+| `make backup` | Backup PostgreSQL database |
+| `make restore` | Restore from backup |
+| `make sync-production` | Sync with Heroku production data |
+| `make list-backups` | List available backups |
 | `make clean` | Remove all containers/images |
+| `make clean-soft` | Remove containers only (keep data) |
 | `make shell` | Open shell in container |
+| `make shell-dev` | Open shell in development container |
 | `make update` | Update and redeploy |
+| `make validate-env` | Validate environment configuration |
 
 ### SSL/Certificate Commands
 
@@ -345,6 +384,66 @@ make restore BACKUP_FILE=discord_stats_20250730_120000.sql
 | `make domain-status APP_NAME=your-app` | Check domain & SSL status |
 | `make domain-test DOMAIN=assembly.test.com` | Test domain connectivity |
 | `make domain-health DOMAIN=assembly.test.com` | Test custom domain health |
+
+## 🐳 Container-First Development
+
+This project uses a **container-first approach** for both development and production. Everything runs in Docker containers to ensure consistency across platforms.
+
+### Development Workflow
+
+```bash
+# 1. Complete setup (creates .env and starts development)
+make quick-start
+
+# 2. Daily development workflow
+make dev-hot           # Start with hot reload
+make logs-dev          # Monitor logs
+make stop-dev          # Stop when done
+
+# 3. Database operations
+make backup            # Backup your local data
+make sync-production   # Get latest production data
+make restore BACKUP_FILE=local_backup_20250807_120000.sql
+```
+
+### Key Benefits
+
+- ✅ **Cross-platform consistency**: Works identically on Windows, macOS, and Linux
+- ✅ **No local dependencies**: Only Docker required, no Node.js/npm installation needed
+- ✅ **Isolated environments**: Development and production are completely separate
+- ✅ **Easy database management**: PostgreSQL runs in container with persistent data
+- ✅ **Hot reload**: Frontend and backend automatically restart on code changes
+- ✅ **Production parity**: Development environment matches production exactly
+
+### Container Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Development Mode                         │
+├─────────────────────────────────────────────────────────────┤
+│ discord-bot-dev    │ TypeScript bot with hot reload         │
+│ postgres-dev       │ PostgreSQL database with persistent    │
+│ frontend-dev       │ Vite dev server with hot reload        │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                    Production Mode                          │
+├─────────────────────────────────────────────────────────────┤
+│ discord-tracker    │ Compiled TypeScript bot                │
+│ postgres           │ PostgreSQL database                     │
+│ nginx              │ Reverse proxy + static file serving    │
+│ certbot            │ SSL certificate management             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Platform-Specific Optimizations
+
+The Makefile automatically detects your platform and applies optimizations:
+
+- **WSL**: Uses Docker BuildKit optimizations
+- **Apple Silicon**: Builds ARM64-compatible images
+- **Linux**: Standard Docker operations
+- **Multi-platform**: `make build-multiplatform` for cross-platform builds
 
 ## 🤖 Discord Bot Setup
 
@@ -405,14 +504,42 @@ Your bot needs the following permissions:
 
 ## 🛠️ Development
 
-### Running in Development Mode
+### Container-First Development Workflow
+
+All development happens in Docker containers for consistency and isolation:
 
 ```bash
-# Start the bot with auto-reload
-npm run dev
+# Start development environment with hot reload
+make dev-hot
 
-# Build TypeScript in watch mode (separate terminal)
-npm run dev:build
+# View logs in real-time
+make logs-dev
+
+# Open shell in development container
+make shell-dev
+
+# Stop development environment
+make stop-dev
+```
+
+### Development Commands
+
+```bash
+# Complete setup from scratch
+make quick-start          # Creates .env and starts development
+
+# Daily development workflow
+make dev-hot              # Hot reload development
+make dev-detached         # Background development
+make logs-dev             # Monitor all development logs
+make logs-dev-backend     # Monitor backend only
+make logs-dev-frontend    # Monitor frontend only
+make status-dev           # Check container status
+
+# Database operations
+make backup               # Backup local PostgreSQL
+make restore BACKUP_FILE=filename.sql
+make sync-production      # Get latest production data
 ```
 
 ### Project Structure
@@ -421,14 +548,19 @@ npm run dev:build
 src/
 ├── index.ts          # Main entry point
 ├── bot.ts            # Discord bot logic
-├── database.ts       # SQLite database operations
+├── config.ts         # Universal event configuration
+├── database/         # Database layer (PostgreSQL only)
 └── webServer.ts      # Express web server
 
-public/
-└── index.html        # Web dashboard
+frontend/
+└── src/              # React/TypeScript frontend
 
-data/
-└── discord_stats.db  # SQLite database (created automatically)
+public/
+└── index.html        # Fallback static dashboard
+
+docker-compose.yml          # Production containers
+docker-compose.dev.yml      # Development containers  
+Makefile                    # Container orchestration
 ```
 
 ### Environment Variables
@@ -438,7 +570,19 @@ data/
 | `DISCORD_TOKEN` | Your Discord bot token | Required |
 | `DISCORD_GUILD_ID` | Your Discord server ID | Required |
 | `WEB_PORT` | Port for the web dashboard | 3000 |
-| `DATABASE_PATH` | Path to SQLite database file | ./data/discord_stats.db |
+| `EVENT_NAME` | Name of your event | Assembly Summer 2025 |
+| `EVENT_START_DATE` | Event start date (ISO 8601) | 2025-07-31T00:00:00+03:00 |
+| `EVENT_END_DATE` | Event end date (ISO 8601) | 2025-08-03T23:59:59+03:00 |
+| `DATABASE_URL` | PostgreSQL connection URL | Auto-configured for containers |
+
+### Hot Reload Development
+
+The development environment supports hot reload for both backend and frontend:
+
+- **Backend**: TypeScript compilation and Node.js restart on file changes
+- **Frontend**: Vite dev server with instant browser updates
+- **Database**: Persistent PostgreSQL data across container restarts
+- **Environment**: Changes to `.env` require container restart (`make stop-dev && make dev-hot`)
 
 ## 📈 Data Collection
 
@@ -451,7 +595,7 @@ Real-time event tracking:
 - Individual game session start/end times (immediate via Discord presence events)
 - Member join/leave events (immediate)
 
-All data is stored locally in an SQLite database.
+All data is stored in a PostgreSQL database.
 
 ### Discord API Rate Limits & Performance
 
