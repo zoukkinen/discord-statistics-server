@@ -36,7 +36,6 @@ services:
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
       - WEB_PORT=3000
-      - DATABASE_TYPE=postgresql
       - DATABASE_URL=postgresql://discord_bot:dev_password@postgres-dev:5432/discord_stats
       - DB_HOST=postgres-dev
       - DB_PORT=5432

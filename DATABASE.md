@@ -30,7 +30,6 @@ docker-compose logs -f discord-tracker
 ### Option 3: Local PostgreSQL (Advanced)
 For developers who prefer local PostgreSQL installation:
 ```bash
-DATABASE_TYPE=postgresql
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=discord_stats
