@@ -81,6 +81,87 @@ export class WebServer {
     }
 
     private setupRoutes(): void {
+        // Admin Authentication Routes
+        this.app.post('/api/admin/auth', async (req, res) => {
+            try {
+                const { password } = req.body;
+                const adminPassword = Config.getAdminPassword();
+                
+                if (password === adminPassword) {
+                    // Generate a simple session token (you could use JWT for better security)
+                    const sessionToken = Buffer.from(`admin:${Date.now()}`).toString('base64');
+                    res.json({ 
+                        success: true, 
+                        token: sessionToken,
+                        message: 'Authentication successful' 
+                    });
+                } else {
+                    res.status(401).json({ 
+                        success: false, 
+                        message: 'Invalid password' 
+                    });
+                }
+            } catch (error) {
+                console.error('Error in admin authentication:', error);
+                res.status(500).json({ 
+                    success: false, 
+                    message: 'Authentication failed' 
+                });
+            }
+        });
+
+        this.app.post('/api/admin/verify', async (req, res) => {
+            try {
+                const { token } = req.body;
+                
+                if (!token) {
+                    return res.status(401).json({ 
+                        valid: false, 
+                        message: 'No token provided' 
+                    });
+                }
+                
+                // Simple token validation (decode and check if it's recent)
+                try {
+                    const decoded = Buffer.from(token, 'base64').toString();
+                    const [prefix, timestamp] = decoded.split(':');
+                    
+                    if (prefix === 'admin') {
+                        const tokenAge = Date.now() - parseInt(timestamp);
+                        const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+                        
+                        if (tokenAge < maxAge) {
+                            res.json({ 
+                                valid: true, 
+                                message: 'Token is valid' 
+                            });
+                        } else {
+                            res.status(401).json({ 
+                                valid: false, 
+                                message: 'Token expired' 
+                            });
+                        }
+                    } else {
+                        res.status(401).json({ 
+                            valid: false, 
+                            message: 'Invalid token' 
+                        });
+                    }
+                } catch (decodeError) {
+                    res.status(401).json({ 
+                        valid: false, 
+                        message: 'Malformed token' 
+                    });
+                }
+            } catch (error) {
+                console.error('Error in token verification:', error);
+                res.status(500).json({ 
+                    valid: false, 
+                    message: 'Verification failed' 
+                });
+            }
+        });
+
         // API Routes
         this.app.get('/api/current', async (req, res) => {
             try {

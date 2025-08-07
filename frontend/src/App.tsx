@@ -1,4 +1,4 @@
-import { Component, createSignal, onMount, onCleanup } from 'solid-js';
+import { Component, createSignal, onMount, onCleanup, Show } from 'solid-js';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import StatsCards from './components/StatsCards';
@@ -9,13 +9,16 @@ import Charts from './components/Charts';
 import InfoModal from './components/InfoModal';
 import InstallButton from './components/InstallButton';
 import EventManager from './components/EventManager';
+import AdminAuth from './components/AdminAuth';
 import { statsStore } from './stores/statsStore';
 import { configStore } from './stores/configStore';
 import './styles/eventManager.css';
+import './styles/adminAuth.css';
 
 const App: Component = () => {
   const [isLoading, setIsLoading] = createSignal(true);
   const [showRecentActivity, setShowRecentActivity] = createSignal(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = createSignal(false);
   
   // Create a reactive signal for the current route
   const [currentRoute, setCurrentRoute] = createSignal(
@@ -43,6 +46,32 @@ const App: Component = () => {
     
     // Listen for route changes
     window.addEventListener('popstate', updateRoute);
+    
+    // Check for existing admin authentication if on admin route
+    if (window.location.pathname === '/admin') {
+      const token = localStorage.getItem('adminToken');
+      if (token) {
+        try {
+          const response = await fetch('/api/admin/verify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ token }),
+          });
+
+          const result = await response.json();
+          if (result.valid) {
+            setIsAdminAuthenticated(true);
+          } else {
+            localStorage.removeItem('adminToken');
+          }
+        } catch (error) {
+          console.error('Token verification failed:', error);
+          localStorage.removeItem('adminToken');
+        }
+      }
+    }
     
     // Check URL parameters for recent activity display
     const urlParams = new URLSearchParams(window.location.search);
@@ -135,15 +164,35 @@ const App: Component = () => {
     }
   });
 
-  // Render admin interface or dashboard based on route
+    // Render admin interface or dashboard based on route
   console.log('Rendering with route:', currentRoute());
   console.log('Current pathname:', window.location.pathname);
   console.log('Is admin path?', window.location.pathname === '/admin');
+  console.log('Is admin authenticated?', isAdminAuthenticated());
+  
+  // Define admin page component with reactivity
+  const AdminPage = () => (
+    <Show
+      when={isAdminAuthenticated()}
+      fallback={
+        <AdminAuth onAuthenticated={() => {
+          console.log('Authentication successful, setting state to true');
+          setIsAdminAuthenticated(true);
+        }} />
+      }
+    >
+      <EventManager onLogout={() => {
+        console.log('Logging out, setting state to false');
+        localStorage.removeItem('adminToken');
+        setIsAdminAuthenticated(false);
+      }} />
+    </Show>
+  );
   
   // Render admin interface or dashboard based on route
   if (window.location.pathname === '/admin') {
-    console.log('Should render EventManager');
-    return <EventManager />;
+    console.log('Should render admin with auth check');
+    return <AdminPage />;
   }
   
   return (

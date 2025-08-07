@@ -43,6 +43,7 @@ services:
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
       - WEB_PORT=3000
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
       - DATABASE_URL=${DATABASE_URL:-postgresql://${DB_USER:-discord_bot}:${DB_PASSWORD:-dev_password}@postgres:5432/${DB_NAME:-discord_stats}}
       - DB_HOST=${DB_HOST:-postgres}
       - DB_PORT=${DB_PORT:-5432}

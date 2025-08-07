@@ -36,7 +36,11 @@ interface CreateEventData {
   description: string;
 }
 
-const EventManager: Component = () => {
+interface EventManagerProps {
+  onLogout?: () => void;
+}
+
+const EventManager: Component<EventManagerProps> = (props) => {
   const [message, setMessage] = createSignal<{ text: string; type: 'success' | 'error' } | null>(null);
   const [isCreating, setIsCreating] = createSignal(false);
   const [formData, setFormData] = createSignal<CreateEventData>({
@@ -259,11 +263,25 @@ const EventManager: Component = () => {
     if (now < start) return { text: '⏳ UPCOMING', class: 'status-upcoming' };
     if (now > end) return { text: '✅ COMPLETED', class: 'status-completed' };
     return { text: '📅 SCHEDULED', class: 'status-scheduled' };
-  };  return (
+  };  const handleLogout = () => {
+    localStorage.removeItem('adminToken');
+    if (props.onLogout) {
+      props.onLogout();
+    }
+  };
+
+  return (
     <div class="admin-container">
       <div class="admin-header">
-        <h1>🎮 Event Management</h1>
-        <p>Create and manage gaming events for Discord activity tracking</p>
+        <div class="admin-header-content">
+          <div class="admin-title">
+            <h1>🎮 Event Management</h1>
+            <p>Create and manage gaming events for Discord activity tracking</p>
+          </div>
+          <button class="logout-button" onClick={handleLogout}>
+            🚪 Logout
+          </button>
+        </div>
       </div>
 
       {/* Message Display */}
