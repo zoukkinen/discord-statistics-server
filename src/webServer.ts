@@ -22,7 +22,14 @@ export class WebServer {
     private setupMiddleware(): void {
         this.app.use(cors());
         this.app.use(express.json());
+        
+        // Serve static files from the build output in development and production
         this.app.use(express.static(path.join(__dirname, '../public')));
+        
+        // Serve SolidJS build files
+        if (process.env.NODE_ENV === 'production') {
+            this.app.use('/dist', express.static(path.join(__dirname, '../public/dist')));
+        }
     }
 
     private setupRoutes(): void {
@@ -84,11 +91,9 @@ export class WebServer {
                     const topGames = await this.database.getTopGamesInRange(start, end, limit);
                     res.json(topGames);
                 } else {
-                    // Fallback to hours-based query
-                    const hours = parseInt(req.query.hours as string) || 24;
-                    const endDate = new Date().toISOString();
-                    const startDate = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
-                    const topGames = await this.database.getTopGamesInRange(startDate, endDate, limit);
+                    // Default to event period instead of last 24 hours
+                    const { start: eventStart, end: eventEnd } = Config.getEventDateRange();
+                    const topGames = await this.database.getTopGamesInRange(eventStart, eventEnd, limit);
                     res.json(topGames);
                 }
             } catch (error) {
@@ -140,12 +145,27 @@ export class WebServer {
 
         // Serve the main dashboard page
         this.app.get('/', (req, res) => {
-            res.sendFile(path.join(__dirname, '../public/index.html'));
+            if (process.env.NODE_ENV === 'production') {
+                // In production, serve the SolidJS build
+                res.sendFile(path.join(__dirname, '../public/dist/index.html'));
+            } else {
+                // In development, serve the original index.html with SolidJS dev server
+                res.sendFile(path.join(__dirname, '../frontend/index.html'));
+            }
         });
 
         // 404 handler
         this.app.use((req, res) => {
-            res.status(404).json({ error: 'Not found' });
+            // For non-API routes, serve the main app (SPA routing)
+            if (!req.path.startsWith('/api/')) {
+                if (process.env.NODE_ENV === 'production') {
+                    res.sendFile(path.join(__dirname, '../public/dist/index.html'));
+                } else {
+                    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+                }
+            } else {
+                res.status(404).json({ error: 'API endpoint not found' });
+            }
         });
     }
 

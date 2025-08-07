@@ -1,34 +1,53 @@
 # Database Configuration Guide
 
-This project uses a database adapter pattern that automatically detects and uses the appropriate database for your environment.
+This project uses PostgreSQL exclusively and is designed to run in containers for both development and production environments.
 
-## Local Development (SQLite)
-- **Automatic**: SQLite is used by default for local development
-- **No setup required**: Database file is created automatically in `./data/discord_stats.db`
-- **Configuration**: Set `DATABASE_PATH` in your `.env` file if you want to change the location
+## Development Setup (Container-First)
 
-## Heroku Production (PostgreSQL)
-- **Automatic**: PostgreSQL is detected when `DATABASE_URL` environment variable is present
-- **Setup**: Add the Heroku Postgres addon to your app
-- **Migration**: Data from SQLite will need to be migrated manually if you have existing data
+The recommended approach is to use the provided Docker containers:
 
-## Manual PostgreSQL Setup
-For custom PostgreSQL installations, configure these environment variables:
+### Option 1: Automated Container Setup (Recommended)
+```bash
+# Use the provided setup scripts
+./setup.sh
+make dev
+
+# This automatically:
+# - Sets up PostgreSQL container
+# - Creates the Discord tracker app container
+# - Configures networking between containers
+```
+
+### Option 2: Manual Container Setup
+```bash
+# Start PostgreSQL and app containers
+docker-compose up -d
+
+# View logs
+docker-compose logs -f discord-tracker
+```
+
+### Option 3: Local PostgreSQL (Advanced)
+For developers who prefer local PostgreSQL installation:
 ```bash
 DATABASE_TYPE=postgresql
-DB_HOST=your-postgres-host
+DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=discord_stats
 DB_USER=your-username
 DB_PASSWORD=your-password
 ```
 
+## Heroku Production (PostgreSQL)
+- **Automatic**: PostgreSQL is detected when `DATABASE_URL` environment variable is present
+- **Setup**: Add the Heroku Postgres addon to your app
+- **Configuration**: Database connection is automatically configured via `DATABASE_URL`
+
 ## Environment Detection
-The system automatically chooses the database adapter based on:
-1. `DATABASE_TYPE` environment variable (if set)
-2. Presence of `DATABASE_URL` (Heroku PostgreSQL)
-3. Presence of `DB_HOST` (manual PostgreSQL)
-4. Falls back to SQLite for local development
+The system automatically chooses PostgreSQL and configures the connection based on:
+1. `DATABASE_URL` environment variable (Heroku PostgreSQL)
+2. Individual database connection variables (`DB_HOST`, `DB_PORT`, etc.)
+3. Falls back to localhost PostgreSQL for development
 
 ## Heroku Deployment Steps
 
@@ -52,7 +71,7 @@ heroku logs --tail -a your-app-name
 Look for: `✅ PostgreSQL database initialized successfully`
 
 ## Schema
-Both SQLite and PostgreSQL use the same schema:
+PostgreSQL database schema:
 - `member_stats` - Discord server member counts over time
 - `game_stats` - Game activity snapshots
 - `game_sessions` - Individual user game sessions with start/end times
@@ -60,4 +79,3 @@ Both SQLite and PostgreSQL use the same schema:
 ## Migration Notes
 - Tables are created automatically on first run
 - No manual migrations needed for new deployments
-- Existing SQLite data would need manual export/import for production migration

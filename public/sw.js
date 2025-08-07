@@ -79,10 +79,12 @@ self.addEventListener('fetch', (event) => {
   </style>
 </head>
 <body>
-  <h1 class="offline">🎮 Discord Activity Tracker</h1>
-  <p>You're currently offline. Please check your internet connection.</p>
-  <p>The app will work normally once you're back online.</p>
-  <button onclick="window.location.reload()">Retry</button>
+  <div class="offline">
+    <h1>🎮 Discord Activity Tracker</h1>
+    <h2>You're Offline</h2>
+    <p>The app will work normally once you're back online.</p>
+    <button onclick="window.location.reload()">Retry</button>
+  </div>
 </body>
 </html>`, { headers: { 'Content-Type': 'text/html' } });
         })

@@ -7,33 +7,36 @@ This project is a Discord bot that tracks Discord server activity and game stati
 ## Project Context
 - **Purpose**: Monitor Discord server member count and track what games users are playing during gaming events
 - **Features**: Real-time member tracking, game activity monitoring, historical statistics, web dashboard, universal event configuration
-- **Tech Stack**: TypeScript, Discord.js, Express.js, SQLite, Docker
+- **Tech Stack**: TypeScript, Discord.js, Express.js, PostgreSQL, Docker
+- **Architecture**: Container-first design for maximum compatibility and deployment ease
 - **Current Default**: Assembly Summer 2025 (configurable for any event)
 
 ## Universal Configuration System
 - **Event Configuration**: Complete event details configurable via environment variables
 - **Dynamic Frontend**: Web dashboard adapts automatically to configured event
 - **API Integration**: `/api/config` endpoint provides event configuration to frontend
-- **Docker Support**: Full containerization with environment variable passing
+- **Container Architecture**: Full containerization for both development and production
+- **Cross-Platform Support**: Runs consistently across Windows, macOS, and Linux via containers
 - **Fallback Defaults**: Assembly Summer 2025 configuration as sensible defaults
 
 ## Code Guidelines
 - Use TypeScript for all source code
 - Follow Discord.js v14+ patterns and best practices
 - Implement proper error handling and logging
-- Use SQLite for data persistence
+- Use PostgreSQL for data persistence
 - Create responsive web dashboard with real-time updates
 - Focus on performance and reliability for continuous monitoring
 - Include proper environment variable configuration
 - Implement graceful bot shutdown and restart capabilities
 - Maintain universal configurability - avoid hardcoding event-specific details
 - Use the Config class from `src/config.ts` for all event-related settings
-- Ensure Docker compatibility with proper environment variable passing
+- Design for containers: all development and production runs in Docker containers
+- Ensure container compatibility with proper environment variable passing
 
 ## Key Components
 - **Discord Bot**: Real-time monitoring of server activity (`src/bot.ts`)
 - **Configuration System**: Universal event configuration (`src/config.ts`)
-- **Database Layer**: SQLite persistence for statistics (`src/database.ts`)
+- **Database Layer**: PostgreSQL persistence for statistics (`src/database/`)
 - **Web Server**: API endpoints and dashboard serving (`src/webServer.ts`)
 - **Dynamic Frontend**: Event-adaptive web interface (`public/index.html`)
 - **Docker Infrastructure**: Containerized deployment with nginx proxy

@@ -86,7 +86,6 @@ done < .env
 echo -e "${YELLOW}🌐 Setting Heroku-specific variables...${NC}"
 heroku config:set PORT=\$PORT --app $APP_NAME
 heroku config:set NODE_ENV=production --app $APP_NAME
-heroku config:set DATABASE_PATH=/app/data/discord_stats.db --app $APP_NAME
 
 # Add buildpacks if using regular deployment (not container)
 # heroku buildpacks:add heroku/nodejs --app $APP_NAME
