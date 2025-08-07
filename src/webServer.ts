@@ -23,12 +23,13 @@ export class WebServer {
         this.app.use(cors());
         this.app.use(express.json());
         
-        // Serve static files from the build output in development and production
-        this.app.use(express.static(path.join(__dirname, '../public')));
-        
-        // Serve SolidJS build files
+        // Serve static files from the SolidJS build output
         if (process.env.NODE_ENV === 'production') {
-            this.app.use('/dist', express.static(path.join(__dirname, '../public/dist')));
+            // In production, serve the built SolidJS files
+            this.app.use(express.static(path.join(__dirname, '../public/dist')));
+        } else {
+            // In development, serve from public directory (for backwards compatibility)
+            this.app.use(express.static(path.join(__dirname, '../public')));
         }
     }
 
