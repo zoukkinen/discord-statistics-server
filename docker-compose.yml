@@ -57,6 +57,16 @@ services:
       # Development: Mount source files for hot reload and serving
       - ./frontend:/app/frontend:ro
       - ./public:/app/public:ro
+      # Development: Mount server source code for hot reload (when NODE_ENV=development)
+      - ./src:/app/src:cached
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./vite.config.ts:/app/vite.config.ts:ro
+      - ./package.json:/app/package.json:ro
+      - ./package-lock.json:/app/package-lock.json:ro
+      # Persist node_modules to avoid reinstalling dependencies
+      - node_modules_cache:/app/node_modules
+      # Cache dist folder to avoid rebuilding
+      - dist_cache:/app/dist
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
       interval: 30s
@@ -111,6 +121,11 @@ volumes:
     driver: local
   certbot_certs:
   certbot_www:
+    driver: local
+  # Development optimization volumes
+  node_modules_cache:
+    driver: local
+  dist_cache:
     driver: local
 
 networks:

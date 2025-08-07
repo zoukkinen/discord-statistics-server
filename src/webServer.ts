@@ -216,14 +216,30 @@ export class WebServer {
                 const limit = parseInt(req.query.limit as string) || 10;
                 
                 if (start && end) {
-                    // Use date range query
+                    // Use date range query if provided
                     const topGames = await this.database.getTopGamesInRange(start, end, limit);
                     res.json(topGames);
                 } else {
-                    // Default to event period instead of last 24 hours
-                    const { start: eventStart, end: eventEnd } = Config.getEventDateRange();
-                    const topGames = await this.database.getTopGamesInRange(eventStart, eventEnd, limit);
-                    res.json(topGames);
+                    // Get the active event from database for date range
+                    const guildId = process.env.DISCORD_GUILD_ID;
+                    if (!guildId) {
+                        return res.status(500).json({ error: 'Discord Guild ID not configured' });
+                    }
+
+                    const activeEvent = await this.database.getActiveEvent(guildId);
+                    
+                    if (activeEvent) {
+                        // Use active event date range
+                        const eventStart = activeEvent.startDate;
+                        const eventEnd = activeEvent.endDate;
+                        const topGames = await this.database.getTopGamesInRange(eventStart, eventEnd, limit);
+                        res.json(topGames);
+                    } else {
+                        // Fallback to environment config if no active event
+                        const { start: eventStart, end: eventEnd } = Config.getEventDateRange();
+                        const topGames = await this.database.getTopGamesInRange(eventStart, eventEnd, limit);
+                        res.json(topGames);
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching top games:', error);
@@ -473,14 +489,51 @@ export class WebServer {
         });
 
         // Event configuration endpoint
-        this.app.get('/api/config', (req, res) => {
+        this.app.get('/api/config', async (req, res) => {
             try {
-                const config = Config.getEventConfig();
-                res.json({
-                    event: config,
-                    isEventActive: Config.isEventActive(),
-                    hasEventStarted: Config.hasEventStarted()
-                });
+                const guildId = process.env.DISCORD_GUILD_ID;
+                if (!guildId) {
+                    return res.status(500).json({ error: 'Discord Guild ID not configured' });
+                }
+
+                // Get the active event from database
+                const activeEvent = await this.database.getActiveEvent(guildId);
+                
+                if (activeEvent) {
+                    // Transform the active event to camelCase format
+                    const transformedEvent = this.transformEventToCamelCase(activeEvent);
+                    
+                    // Use active event from database
+                    const eventConfig = {
+                        name: transformedEvent.name,
+                        startDate: transformedEvent.startDate,
+                        endDate: transformedEvent.endDate,
+                        timezone: transformedEvent.timezone,
+                        description: transformedEvent.description || `Discord activity tracking for ${transformedEvent.name}`
+                    };
+
+                    const now = new Date();
+                    const start = new Date(transformedEvent.startDate);
+                    const end = new Date(transformedEvent.endDate);
+                    const isEventActive = now >= start && now <= end;
+                    const hasEventStarted = now >= start;
+
+                    res.json({
+                        event: eventConfig,
+                        isEventActive,
+                        hasEventStarted,
+                        activeEventId: transformedEvent.id
+                    });
+                } else {
+                    // Fallback to environment config if no active event in database
+                    const config = Config.getEventConfig();
+                    res.json({
+                        event: config,
+                        isEventActive: Config.isEventActive(),
+                        hasEventStarted: Config.hasEventStarted(),
+                        activeEventId: null
+                    });
+                }
             } catch (error) {
                 console.error('Error fetching config:', error);
                 res.status(500).json({ error: 'Failed to fetch config' });

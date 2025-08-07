@@ -1,5 +1,6 @@
 import { Component, createSignal, onMount, createEffect } from 'solid-js';
 import { statsStore } from '../stores/statsStore';
+import { configStore } from '../stores/configStore';
 
 const Charts: Component = () => {
   const [isLoading, setIsLoading] = createSignal(true);
@@ -167,7 +168,7 @@ const Charts: Component = () => {
         <div class="empty-state">
           <div class="empty-icon">📈</div>
           <div class="empty-text">No event data available</div>
-          <div class="empty-subtext">Assembly Summer 2025 event data will appear here during the event period</div>
+          <div class="empty-subtext">{configStore.config.name} event data will appear here during the event period</div>
         </div>
       ) : (
         <>

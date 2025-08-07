@@ -145,7 +145,31 @@ const EventManager: Component<EventManagerProps> = (props) => {
   };
 
   const activateEvent = async (eventId: number, eventName: string) => {
-    if (!confirm(`Set "${eventName}" as the active event? This will make it the current tracking target.`)) {
+    // Find the event to check its timing
+    const allEvents = events();
+    const targetEvent = allEvents?.find(e => e.id === eventId);
+    
+    if (!targetEvent) {
+      showMessage('Event not found', 'error');
+      return;
+    }
+
+    const now = new Date();
+    const start = new Date(targetEvent.startDate);
+    const end = new Date(targetEvent.endDate);
+    
+    let confirmMessage = `Set "${eventName}" as the active event?`;
+    
+    if (now < start) {
+      const daysUntil = Math.ceil((start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      confirmMessage += `\n\n⏳ This is an upcoming event starting in ${daysUntil} days.\nIt will be displayed on the frontend but tracking will begin when the event starts.`;
+    } else if (now > end) {
+      confirmMessage += `\n\n✅ This event has already ended.\nYou can still set it as active to display its information on the frontend.`;
+    } else {
+      confirmMessage += `\n\n🟢 This event is currently live and tracking will be active immediately.`;
+    }
+    
+    if (!confirm(confirmMessage)) {
       return;
     }
 
@@ -157,7 +181,8 @@ const EventManager: Component<EventManagerProps> = (props) => {
       const result = await response.json();
 
       if (response.ok) {
-        showMessage(`Event "${result.name}" is now active!`);
+        const status = now < start ? 'upcoming' : now > end ? 'completed' : 'live';
+        showMessage(`Event "${result.name}" is now active! Status: ${status}`);
         refetchEvents();
       } else {
         showMessage(result.error || 'Failed to activate event', 'error');

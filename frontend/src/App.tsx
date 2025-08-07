@@ -200,6 +200,19 @@ const App: Component = () => {
       <Header />
       
       <main class="main-content">
+        {/* Event Status Banner for upcoming events */}
+        {!configStore.isEventActive && configStore.isUpcoming && (
+          <div class="event-banner upcoming">
+            <div class="banner-content">
+              <div class="banner-icon">⏳</div>
+              <div class="banner-text">
+                <h3>Upcoming Event: {configStore.eventName}</h3>
+                <p>Event starts in {configStore.daysUntilStart} days • Stay tuned for activity tracking!</p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {isLoading() ? (
           <div class="loading-container">
             <div class="loading-spinner">🎮</div>

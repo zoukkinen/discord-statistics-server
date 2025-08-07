@@ -1,4 +1,4 @@
-.PHONY: help build up down logs restart status clean dev prod backup restore platform-info dev-detached shell shell-root heroku-validate heroku-backup heroku-restore sync-production list-backups rebuild
+.PHONY: help build up down logs restart status clean dev dev-build dev-logs dev-detached prod backup restore platform-info shell shell-root heroku-validate heroku-backup heroku-restore sync-production list-backups rebuild
 
 # Detect platform for better compatibility
 UNAME_S := $(shell uname -s)
@@ -46,10 +46,24 @@ else
 endif
 
 # Development commands
-dev: ## Start in development mode with hot reload
-	@echo "🚀 Starting Assembly Discord Tracker in development mode..."
+dev: ## Start fast development environment with hot reload (no rebuild needed)
+	@echo "⚡ Starting fast development environment with hot reload..."
 	@if [ ! -f .env ]; then echo "❌ .env file not found! Copy .env.example and configure it."; exit 1; fi
-	$(DOCKER_COMPOSE) up --build
+	@if [ "$$(grep '^NODE_ENV=' .env | cut -d'=' -f2)" != "development" ]; then \
+		echo "⚠️  Warning: NODE_ENV is not set to 'development' in .env file"; \
+		echo "   Current value: $$(grep '^NODE_ENV=' .env | cut -d'=' -f2)"; \
+		echo "   Fast development works best with NODE_ENV=development"; \
+	fi
+	$(DOCKER_COMPOSE) up -d
+
+dev-build: ## Build and start development environment (first time only)
+	@echo "🔨 Building development environment (first time)..."
+	@if [ ! -f .env ]; then echo "❌ .env file not found! Copy .env.example and configure it."; exit 1; fi
+	$(DOCKER_COMPOSE) up --build -d
+
+dev-logs: ## Show logs from development environment
+	@echo "📋 Showing development logs (Ctrl+C to exit)..."
+	$(DOCKER_COMPOSE) logs -f discord-bot
 
 # Production commands
 prod: down ## Start in production mode (with nginx)
@@ -74,10 +88,15 @@ rebuild: ## Force rebuild from scratch (no cache) and restart
 	@echo "✅ Application rebuilt and restarted"
 
 # Local Development (Container-First)
-dev-detached: ## Start development environment in background
+dev-detached: ## Start development environment in background (same as dev but silent)
 	@echo "🐳 Starting development environment in background..."
 	@if [ ! -f .env ]; then echo "❌ .env file not found! Copy .env.example and configure it."; exit 1; fi
-	$(DOCKER_COMPOSE) up --build -d
+	@if [ "$$(grep '^NODE_ENV=' .env | cut -d'=' -f2)" != "development" ]; then \
+		echo "⚠️  Warning: NODE_ENV is not set to 'development' in .env file"; \
+		echo "   Current value: $$(grep '^NODE_ENV=' .env | cut -d'=' -f2)"; \
+		echo "   Fast development works best with NODE_ENV=development"; \
+	fi
+	$(DOCKER_COMPOSE) up -d
 
 up: ## Start the services
 	@echo "⬆️  Starting services..."
@@ -229,47 +248,6 @@ update: ## Update and rebuild the application
 
 # Quick start
 quick-start: setup validate-env dev ## Complete setup and start in development mode
-
-dev-info: ## Show development workflow information
-	@echo "🛠️  Development Workflow (Container-First):"
-	@echo ""
-	@echo "📦 Development Commands:"
-	@echo "  make quick-start          # Complete setup and start"
-	@echo "  make dev                  # Start development with hot reload"
-	@echo "  make dev-detached         # Start development in background"
-	@echo "  make up                   # Start services in background"
-	@echo "  make down                 # Stop and remove all services"
-	@echo "  make logs                 # View logs from all services"
-	@echo "  make logs-bot             # View Discord bot logs only"
-	@echo "  make status               # Show service status"
-	@echo "  make health               # Check application health"
-	@echo ""
-	@echo "🔨 Building and Deployment:"
-	@echo "  make build                # Build images"
-	@echo "  make build-fast           # Fast build with cache"
-	@echo "  make rebuild              # Force rebuild from scratch (no cache)"
-	@echo "  make prod                 # Start in production mode (with nginx)"
-	@echo "  make deploy               # Complete production deployment"
-	@echo ""
-	@echo "💾 Database Operations:"
-	@echo "  make backup               # Backup local PostgreSQL database"
-	@echo "  make restore BACKUP_FILE=filename  # Restore from backup"
-	@echo "  make sync-production      # Sync with Heroku production data"
-	@echo "  make list-backups         # List available backups"
-	@echo ""
-	@echo "🔧 Development Tools:"
-	@echo "  make shell                # Open shell in Discord bot container"
-	@echo "  make shell-db             # Open shell in PostgreSQL container"
-	@echo "  make validate-env         # Check environment configuration"
-	@echo "  make update               # Update and rebuild application"
-	@echo ""
-	@echo "🚀 Production Deployment:"
-	@echo "  make heroku-validate      # Test if ready for Heroku deployment"
-	@echo "  make heroku-deploy APP_NAME=your-app  # Deploy to Heroku"
-	@echo ""
-	@echo "🌐 Access Points:"
-	@echo "  Development: http://localhost:3000"
-	@echo "  Production:  http://localhost (with nginx)"
 
 # Production deployment
 deploy: validate-env build prod ## Deploy to production

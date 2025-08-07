@@ -726,3 +726,103 @@ select:focus {
         padding: 15px 20px 25px 20px;
     }
 }
+
+/* Event Banner Styles */
+.event-banner {
+    margin: 20px auto 30px auto;
+    max-width: 1200px;
+    border-radius: 12px;
+    padding: 20px;
+    border: 2px solid transparent;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    animation: bannerPulse 3s ease-in-out infinite;
+}
+
+.event-banner.upcoming {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 235, 59, 0.05) 100%);
+    border-color: rgba(255, 193, 7, 0.3);
+}
+
+.banner-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.banner-icon {
+    font-size: 3rem;
+    flex-shrink: 0;
+    animation: iconFloat 2s ease-in-out infinite;
+}
+
+.banner-text h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ffc107;
+}
+
+.banner-text p {
+    margin: 0;
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.4;
+}
+
+@keyframes bannerPulse {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    50% {
+        box-shadow: 0 6px 20px rgba(255, 193, 7, 0.2);
+    }
+}
+
+@keyframes iconFloat {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
+/* Responsive banner */
+@media (max-width: 768px) {
+    .event-banner {
+        margin: 15px 10px 25px 10px;
+        padding: 15px;
+    }
+    
+    .banner-content {
+        gap: 15px;
+    }
+    
+    .banner-icon {
+        font-size: 2.5rem;
+    }
+    
+    .banner-text h3 {
+        font-size: 1.3rem;
+    }
+    
+    .banner-text p {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .banner-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+    
+    .banner-icon {
+        font-size: 2rem;
+    }
+    
+    .banner-text h3 {
+        font-size: 1.2rem;
+    }
+}

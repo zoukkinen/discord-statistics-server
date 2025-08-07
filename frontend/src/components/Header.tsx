@@ -54,17 +54,17 @@ const Header: Component = () => {
   const getEventStatus = () => {
     if (configStore.isEventActive) {
       return {
-        text: `${configStore.daysRemaining} days remaining`,
+        text: `🟢 Live Event - ${configStore.daysRemaining} days remaining`,
         class: 'status-active'
       };
-    } else if (configStore.daysUntilStart > 0) {
+    } else if (configStore.isUpcoming) {
       return {
-        text: `Starts in ${configStore.daysUntilStart} days`,
+        text: `⏳ Upcoming Event - Starts in ${configStore.daysUntilStart} days`,
         class: 'status-upcoming'
       };
     } else {
       return {
-        text: 'Event completed',
+        text: '✅ Event completed',
         class: 'status-completed'
       };
     }
