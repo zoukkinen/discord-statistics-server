@@ -15,9 +15,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    host: '0.0.0.0', // Allow external connections
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://discord-bot-dev:3000',
         changeOrigin: true
       }
     }

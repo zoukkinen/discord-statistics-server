@@ -2,25 +2,36 @@ import { createSignal } from 'solid-js';
 
 export interface EventConfig {
   name: string;
-  start_date: string;
-  end_date: string;
+  startDate: string;
+  endDate: string;
   timezone: string;
   description: string;
+}
+
+export interface ConfigResponse {
+  event: EventConfig;
+  isEventActive: boolean;
+  hasEventStarted: boolean;
 }
 
 // Create reactive signals for configuration
 const [config, setConfig] = createSignal<EventConfig>({
   name: 'Assembly Summer 2025',
-  start_date: '2025-07-31T00:00:00+03:00',
-  end_date: '2025-08-03T23:59:59+03:00',
+  startDate: '2025-07-31T00:00:00+03:00',
+  endDate: '2025-08-03T23:59:59+03:00',
   timezone: 'Europe/Helsinki',
   description: 'Finland\'s biggest computer festival and digital culture event'
+});
+
+const [eventStatus, setEventStatus] = createSignal({
+  isEventActive: false,
+  hasEventStarted: false
 });
 
 const [isLoading, setIsLoading] = createSignal(false);
 
 // API Functions
-const fetchConfig = async (): Promise<EventConfig> => {
+const fetchConfig = async (): Promise<ConfigResponse> => {
   const response = await fetch('/api/config');
   if (!response.ok) throw new Error('Failed to fetch configuration');
   return response.json();
@@ -37,7 +48,11 @@ export const configStore = {
     try {
       setIsLoading(true);
       const data = await fetchConfig();
-      setConfig(data);
+      setConfig(data.event);
+      setEventStatus({
+        isEventActive: data.isEventActive,
+        hasEventStarted: data.hasEventStarted
+      });
     } catch (error) {
       console.error('Error fetching config:', error);
       // Keep default values if fetch fails
@@ -56,11 +71,11 @@ export const configStore = {
   },
 
   get startDate() {
-    return new Date(config().start_date);
+    return new Date(config().startDate);
   },
 
   get endDate() {
-    return new Date(config().end_date);
+    return new Date(config().endDate);
   },
 
   get timezone() {
@@ -69,21 +84,21 @@ export const configStore = {
 
   get isEventActive() {
     const now = new Date();
-    const start = new Date(config().start_date);
-    const end = new Date(config().end_date);
+    const start = new Date(config().startDate);
+    const end = new Date(config().endDate);
     return now >= start && now <= end;
   },
 
   get daysUntilStart() {
     const now = new Date();
-    const start = new Date(config().start_date);
+    const start = new Date(config().startDate);
     if (now >= start) return 0;
     return Math.ceil((start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   },
 
   get daysRemaining() {
     const now = new Date();
-    const end = new Date(config().end_date);
+    const end = new Date(config().endDate);
     if (now >= end) return 0;
     return Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   }

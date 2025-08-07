@@ -1,72 +1,78 @@
 import { Component, For } from 'solid-js';
 import { statsStore } from '../stores/statsStore';
+import { configStore } from '../stores/configStore';
 
 const TopGames: Component = () => {
   const formatTime = (minutes: number) => {
-    if (minutes < 60) return `${minutes.toFixed(1)}m`;
+    if (minutes < 60) return `${Math.round(minutes)}m`;
     const hours = Math.floor(minutes / 60);
-    const mins = Math.floor(minutes % 60);
-    return `${hours}h ${mins}m`;
+    const mins = Math.round(minutes % 60);
+    if (hours >= 24) {
+      const days = Math.floor(hours / 24);
+      const remainingHours = hours % 24;
+      return days > 0 && remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
+    }
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
   };
 
-  const getPositionIcon = (index: number) => {
+  const getRankEmoji = (index: number) => {
     switch (index) {
       case 0: return '🥇';
       case 1: return '🥈';
       case 2: return '🥉';
-      default: return `${index + 1}.`;
+      default: return `#${index + 1}`;
+    }
+  };
+
+  const formatEventEndTime = () => {
+    const config = configStore.config;
+    if (!config?.endDate) return '';
+    
+    try {
+      const endDate = new Date(config.endDate);
+      if (isNaN(endDate.getTime())) return '';
+      
+      return `Event period: through ${endDate.toLocaleDateString()}`;
+    } catch {
+      return '';
     }
   };
 
   return (
-    <div class="card top-games">
-      <div class="card-title">
-        🏆 Top Games by Playtime
-      </div>
+    <div class="chart-container">
+      <h3>🏆 Top Games</h3>
       
-      <div class="card-content">
-        {statsStore.topGames.length === 0 ? (
-          <div class="empty-state">
-            <div class="empty-icon">📊</div>
-            <div class="empty-text">No game data yet</div>
-            <div class="empty-subtext">Start playing to see statistics!</div>
-          </div>
-        ) : (
-          <div class="top-games-list">
-            <For each={statsStore.topGames}>
-              {(game, index) => (
-                <div class={`top-game-item ${index() < 3 ? 'podium' : ''}`}>
-                  <div class="game-position">
-                    {getPositionIcon(index())}
-                  </div>
-                  
-                  <div class="game-details">
-                    <div class="game-name">{game.game_name}</div>
-                    <div class="game-stats">
-                      <span class="total-time">{formatTime(game.total_minutes)}</span>
-                      <span class="sessions">{game.total_sessions} sessions</span>
-                      <span class="players">{game.unique_players} players</span>
-                    </div>
-                  </div>
-                  
-                  <div class="game-progress">
-                    <div class="progress-bar">
-                      <div 
-                        class="progress-fill"
-                        style={{ 
-                          width: `${Math.min(100, (game.total_minutes / (statsStore.topGames[0]?.total_minutes || 1)) * 100)}%`
-                        }}
-                      ></div>
-                    </div>
-                    <div class="avg-time">
-                      avg {formatTime(game.avg_minutes)}
-                    </div>
+      {statsStore.isUpdating && statsStore.topGames.length === 0 ? (
+        <div class="empty-state">
+          <div class="empty-icon">🎮</div>
+          <div class="empty-text">Loading games...</div>
+        </div>
+      ) : statsStore.topGames.length === 0 ? (
+        <div class="empty-state">
+          <div class="empty-icon">🎮</div>
+          <div class="empty-text">No game data yet</div>
+          <div class="empty-subtext">Start playing to see statistics!</div>
+        </div>
+      ) : (
+        <div class="game-list">
+          <For each={statsStore.topGames.slice(0, 8)}>
+            {(game, index) => (
+              <div class="game-item">
+                <span class="game-rank">{getRankEmoji(index())}</span>
+                <div class="game-info">
+                  <div class="game-name" title={game.game_name}>{game.game_name}</div>
+                  <div class="game-stats">
+                    {formatTime(game.total_minutes)} • {game.unique_players} players
                   </div>
                 </div>
-              )}
-            </For>
-          </div>
-        )}
+              </div>
+            )}
+          </For>
+        </div>
+      )}
+      
+      <div class="last-updated">
+        {formatEventEndTime()}
       </div>
     </div>
   );

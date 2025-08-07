@@ -1,4 +1,4 @@
-import { createSignal, createResource } from 'solid-js';
+import { createSignal } from 'solid-js';
 
 export interface MemberStats {
   timestamp: string;
@@ -63,17 +63,60 @@ const fetchRecentActivity = async (): Promise<RecentActivity[]> => {
 };
 
 const fetchMemberHistory = async (): Promise<MemberStats[]> => {
-  const endDate = new Date();
-  const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000); // 24 hours ago
+  // Use event date range from config instead of last 24 hours
+  const { configStore } = await import('./configStore');
+  
+  // Ensure config is loaded first
+  if (configStore.isLoading) {
+    console.log('fetchMemberHistory: Config is loading, waiting...');
+    await new Promise(resolve => {
+      const checkConfig = () => {
+        if (!configStore.isLoading) {
+          resolve(undefined);
+        } else {
+          setTimeout(checkConfig, 50);
+        }
+      };
+      checkConfig();
+    });
+  }
+  
+  // If config is still empty, try loading it
+  if (!configStore.config.startDate || configStore.config.startDate === '2025-07-31T00:00:00+03:00') {
+    console.log('fetchMemberHistory: Config not loaded, loading now...');
+    await configStore.loadConfig();
+  }
+  
+  const config = configStore.config;
+  console.log('fetchMemberHistory: configStore.config:', config);
+  
+  let startDate: Date;
+  let endDate: Date;
+  
+  if (config?.startDate && config?.endDate) {
+    startDate = new Date(config.startDate);
+    endDate = new Date(config.endDate);
+    console.log('fetchMemberHistory: Using config dates:', startDate.toISOString(), 'to', endDate.toISOString());
+  } else {
+    // Fallback to last 7 days if no config
+    endDate = new Date();
+    startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+    console.log('fetchMemberHistory: Using fallback dates:', startDate.toISOString(), 'to', endDate.toISOString());
+  }
   
   const params = new URLSearchParams({
     start: startDate.toISOString(),
     end: endDate.toISOString()
   });
   
-  const response = await fetch(`/api/member-history?${params}`);
+  const url = `/api/member-history?${params}`;
+  console.log('fetchMemberHistory: Fetching from URL:', url);
+  
+  const response = await fetch(url);
   if (!response.ok) throw new Error('Failed to fetch member history');
-  return response.json();
+  const data = await response.json();
+  console.log('fetchMemberHistory: Received', data.length, 'data points');
+  return data;
 };
 
 // Store methods
@@ -118,8 +161,12 @@ export const statsStore = {
 
   async fetchMemberHistory() {
     try {
+      console.log('statsStore.fetchMemberHistory called');
       const data = await fetchMemberHistory();
+      console.log('fetchMemberHistory API returned:', data.length, 'points');
+      console.log('Sample data:', data.slice(0, 3));
       setMemberHistory(data);
+      console.log('memberHistory signal updated, new length:', memberHistory().length);
     } catch (error) {
       console.error('Error fetching member history:', error);
     }
@@ -143,8 +190,28 @@ export const statsStore = {
   },
 
   get lastUpdated() {
-    return currentStats().memberStats?.timestamp 
-      ? new Date(currentStats().memberStats.timestamp)
-      : null;
+    const timestamp = currentStats().memberStats?.timestamp;
+    if (!timestamp) return null;
+    
+    try {
+      // Try parsing as ISO string first
+      let date = new Date(timestamp);
+      
+      // If that fails, try adding UTC suffix for older format
+      if (isNaN(date.getTime()) && !timestamp.includes('T') && !timestamp.includes('Z')) {
+        date = new Date(timestamp + ' UTC');
+      }
+      
+      // If still invalid, return null
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid timestamp format:', timestamp);
+        return null;
+      }
+      
+      return date;
+    } catch (error) {
+      console.warn('Error parsing timestamp:', timestamp, error);
+      return null;
+    }
   }
 };

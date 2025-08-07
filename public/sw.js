@@ -1,111 +1,152 @@
 // Service Worker for Discord Activity Tracker PWA
-const CACHE_NAME = 'discord-stats-v1';
-const urlsToCache = [
-  '/',
+const CACHE_VERSION = Date.now(); // Use timestamp for unique cache versions
+const CACHE_NAME = `discord-stats-v${CACHE_VERSION}`;
+const STATIC_CACHE = `static-v${CACHE_VERSION}`;
+
+const STATIC_ASSETS = [
   '/manifest.json',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
   'https://cdn.jsdelivr.net/npm/chart.js'
 ];
 
-// Install event - cache resources
+// Install event - cache static resources only
 self.addEventListener('install', (event) => {
-  console.log('Service Worker: Installing...');
+  console.log('Service Worker: Installing with cache version', CACHE_VERSION);
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('Service Worker: Caching files');
-        return cache.addAll(urlsToCache);
+        console.log('Service Worker: Caching static files');
+        return cache.addAll(STATIC_ASSETS);
       })
       .catch((error) => {
         console.log('Service Worker: Cache failed', error);
       })
+      .then(() => {
+        // Force immediate activation
+        return self.skipWaiting();
+      })
   );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up old caches and take control immediately
 self.addEventListener('activate', (event) => {
   console.log('Service Worker: Activating...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
+          // Delete all caches that don't match current version
+          if (!cacheName.includes(CACHE_VERSION.toString())) {
             console.log('Service Worker: Deleting old cache', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
+    }).then(() => {
+      // Take control of all clients immediately
+      return self.clients.claim();
     })
   );
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - smart caching strategy
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') {
     return;
   }
 
-  // For API requests, always fetch from network (with cache fallback)
-  if (event.request.url.includes('/api/')) {
+  const requestUrl = new URL(event.request.url);
+  
+  // NEVER cache the main HTML file - always fetch fresh
+  if (requestUrl.pathname === '/' || requestUrl.pathname.endsWith('.html')) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          // If we get a valid response, update cache
-          if (response && response.status === 200) {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseClone);
-            });
-          }
+          console.log('Service Worker: Fetching fresh HTML');
           return response;
         })
         .catch(() => {
-          // If network fails, try to get from cache
-          return caches.match(event.request);
+          // Only on network failure, provide basic offline page
+          return new Response(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Discord Stats - Offline</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #000; color: #fff; }
+    .offline { color: #00ff9d; }
+    button { background: #00ff9d; color: #000; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="offline">
+    <h1>🎮 Discord Stats</h1>
+    <h2>You're Offline</h2>
+    <p>The app will work normally once you're back online.</p>
+    <button onclick="window.location.reload()">Retry</button>
+  </div>
+</body>
+</html>`, { headers: { 'Content-Type': 'text/html' } });
         })
     );
     return;
   }
 
-  // For other requests, try cache first, then network
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request).then((fetchResponse) => {
-          // Save to cache if it's a valid response
-          if (fetchResponse && fetchResponse.status === 200) {
-            const responseClone = fetchResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseClone);
-            });
+  // For API requests, always fetch from network first (fresh data is critical)
+  if (requestUrl.pathname.includes('/api/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          console.log('Service Worker: Fresh API data fetched');
+          return response;
+        })
+        .catch(() => {
+          // Return error response for failed API calls
+          console.log('Service Worker: API request failed, returning error');
+          return new Response(JSON.stringify({ error: 'Offline' }), {
+            headers: { 'Content-Type': 'application/json' },
+            status: 503
+          });
+        })
+    );
+    return;
+  }
+
+  // For static assets (fonts, external libraries), use cache first
+  if (requestUrl.host !== location.host || 
+      requestUrl.pathname.includes('fonts.googleapis.com') || 
+      requestUrl.pathname.includes('cdn.jsdelivr.net')) {
+    event.respondWith(
+      caches.match(event.request)
+        .then((cachedResponse) => {
+          if (cachedResponse) {
+            console.log('Service Worker: Serving static asset from cache');
+            return cachedResponse;
           }
-          return fetchResponse;
-        });
+          
+          // Not in cache, fetch and cache
+          return fetch(event.request).then((response) => {
+            if (response && response.status === 200) {
+              const responseClone = response.clone();
+              caches.open(STATIC_CACHE).then((cache) => {
+                cache.put(event.request, responseClone);
+              });
+            }
+            return response;
+          });
+        })
+    );
+    return;
+  }
+
+  // For everything else, network first with cache fallback
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        return response;
       })
       .catch(() => {
-        // If both cache and network fail, return a basic offline page for HTML requests
-        if (event.request.headers.get('accept').includes('text/html')) {
-          return new Response(
-            `<!DOCTYPE html>
-            <html>
-            <head>
-              <title>Discord Stats - Offline</title>
-              <style>
-                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #000; color: #fff; }
-                .offline { color: #00ff9d; }
-              </style>
-            </head>
-            <body>
-              <h1 class="offline">🎮 Discord Activity Tracker</h1>
-              <p>You're currently offline. Please check your internet connection.</p>
-              <p>The app will work normally once you're back online.</p>
-            </body>
-            </html>`,
-            { headers: { 'Content-Type': 'text/html' } }
-          );
-        }
+        return caches.match(event.request);
       })
   );
 });
@@ -114,7 +155,6 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('sync', (event) => {
   console.log('Service Worker: Background sync triggered');
   if (event.tag === 'background-sync') {
-    // You could implement background data syncing here
     console.log('Service Worker: Performing background sync');
   }
 });
@@ -134,5 +174,12 @@ self.addEventListener('push', (event) => {
     event.waitUntil(
       self.registration.showNotification(data.title || 'Discord Activity Update', options)
     );
+  }
+});
+
+// Handle service worker updates
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
 });

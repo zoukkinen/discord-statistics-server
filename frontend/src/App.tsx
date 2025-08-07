@@ -1,5 +1,6 @@
 import { Component, createSignal, onMount, onCleanup } from 'solid-js';
 import Header from './components/Header';
+import Footer from './components/Footer';
 import StatsCards from './components/StatsCards';
 import CurrentlyPlaying from './components/CurrentlyPlaying';
 import TopGames from './components/TopGames';
@@ -12,16 +13,25 @@ import { configStore } from './stores/configStore';
 
 const App: Component = () => {
   const [isLoading, setIsLoading] = createSignal(true);
-  let refreshInterval: number;
+  const [showRecentActivity, setShowRecentActivity] = createSignal(false);
+  let refreshInterval: NodeJS.Timeout;
 
   onMount(async () => {
+    // Check URL parameters for recent activity display
+    const urlParams = new URLSearchParams(window.location.search);
+    setShowRecentActivity(urlParams.get('activity') === 'show');
+    
     // Initialize configuration
     await configStore.loadConfig();
     
     // Load initial data
     await statsStore.fetchCurrentStats();
     await statsStore.fetchTopGames();
-    await statsStore.fetchRecentActivity();
+    
+    // Only fetch recent activity if it should be shown
+    if (showRecentActivity()) {
+      await statsStore.fetchRecentActivity();
+    }
     
     setIsLoading(false);
 
@@ -29,25 +39,57 @@ const App: Component = () => {
     refreshInterval = setInterval(async () => {
       await statsStore.fetchCurrentStats();
       await statsStore.fetchTopGames();
-      await statsStore.fetchRecentActivity();
+      
+      // Only fetch recent activity if it should be shown
+      if (showRecentActivity()) {
+        await statsStore.fetchRecentActivity();
+      }
     }, 15000); // 15 seconds
 
-    // Register service worker
+    // Register service worker with enhanced update handling
     if ('serviceWorker' in navigator) {
       try {
         const registration = await navigator.serviceWorker.register('/sw.js');
         console.log('Service Worker registered successfully:', registration.scope);
         
-        // Check for updates
+        // Check for updates immediately
+        registration.update();
+        
+        // Check for updates every 60 seconds
+        const updateInterval = setInterval(() => {
+          registration.update();
+        }, 60000);
+        
+        // Handle updates
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
-          newWorker?.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              if (confirm('New version available! Refresh to update?')) {
-                window.location.reload();
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // New content is available, force update
+                console.log('New service worker installed, updating...');
+                
+                // Send message to service worker to skip waiting
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                
+                // Refresh the page after a short delay
+                setTimeout(() => {
+                  window.location.reload();
+                }, 1000);
               }
-            }
-          });
+            });
+          }
+        });
+        
+        // Handle service worker controller change
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          console.log('Service Worker controller changed, reloading...');
+          window.location.reload();
+        });
+        
+        // Clean up the update interval on unmount
+        onCleanup(() => {
+          clearInterval(updateInterval);
         });
       } catch (error) {
         console.log('Service Worker registration failed:', error);
@@ -77,19 +119,20 @@ const App: Component = () => {
             
             <div class="content-grid">
               <div class="left-column">
+                <Charts />
                 <CurrentlyPlaying />
-                <TopGames />
               </div>
               
               <div class="right-column">
-                <RecentActivity />
-                <Charts />
+                <TopGames />
+                {showRecentActivity() && <RecentActivity />}
               </div>
             </div>
           </>
         )}
       </main>
 
+      <Footer />
       <InfoModal />
       <InstallButton />
     </div>
