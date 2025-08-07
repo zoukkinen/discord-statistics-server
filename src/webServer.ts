@@ -312,6 +312,23 @@ export class WebServer {
             }
         });
 
+        // Get event summaries (for history view) - MUST be before parameterized routes
+        this.app.get('/api/events/summaries', async (req, res) => {
+            try {
+                const guildId = process.env.DISCORD_GUILD_ID;
+                if (!guildId) {
+                    return res.status(500).json({ error: 'Discord Guild ID not configured' });
+                }
+                
+                const summaries = await this.database.getEventSummaries(guildId);
+                const transformedSummaries = summaries.map(summary => this.transformEventSummaryToCamelCase(summary));
+                res.json(transformedSummaries);
+            } catch (error) {
+                console.error('Error fetching event summaries:', error);
+                res.status(500).json({ error: 'Failed to fetch event summaries' });
+            }
+        });
+
         // Get specific event by ID
         this.app.get('/api/events/:id', async (req, res) => {
             try {
@@ -452,23 +469,6 @@ export class WebServer {
             } catch (error) {
                 console.error('Error activating event:', error);
                 res.status(500).json({ error: 'Failed to activate event' });
-            }
-        });
-
-        // Get event summaries (for history view)
-        this.app.get('/api/events/summaries', async (req, res) => {
-            try {
-                const guildId = process.env.DISCORD_GUILD_ID;
-                if (!guildId) {
-                    return res.status(500).json({ error: 'Discord Guild ID not configured' });
-                }
-                
-                const summaries = await this.database.getEventSummaries(guildId);
-                const transformedSummaries = summaries.map(summary => this.transformEventSummaryToCamelCase(summary));
-                res.json(transformedSummaries);
-            } catch (error) {
-                console.error('Error fetching event summaries:', error);
-                res.status(500).json({ error: 'Failed to fetch event summaries' });
             }
         });
 

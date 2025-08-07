@@ -9,7 +9,7 @@
     border: 1px solid rgba(0, 255, 157, 0.3);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     position: relative;
-    overflow: hidden;
+    overflow: visible; /* Changed from hidden to visible */
 }
 
 .header::before {
@@ -311,10 +311,7 @@
     position: absolute;
     top: 20px;
     right: 20px;
-    z-index: 10;
-}
-
-.burger-button {
+    z-index: 100; /* Ensure button is clickable but below the menu overlay */
     background: none;
     border: none;
     color: #00ff9d;
@@ -324,65 +321,109 @@
     border-radius: 6px;
     transition: all 0.3s ease;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     width: 40px;
     height: 40px;
 }
 
-.burger-button:hover {
+.burger-menu:hover {
     background: rgba(0, 255, 157, 0.1);
     transform: scale(1.1);
 }
 
-.burger-overlay {
+.burger-line {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: #00ff9d;
+    margin: 2px 0;
+    transition: all 0.3s ease;
+    border-radius: 1px;
+}
+
+.burger-menu:hover .burger-line {
+    background: #ffffff;
+}
+
+/* Menu Overlay - slides from right */
+.menu-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.8);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    z-index: 9999; /* Increased z-index to ensure it's above everything */
     backdrop-filter: blur(5px);
+    animation: fadeIn 0.3s ease;
 }
 
-.burger-menu-content {
+/* Override body overflow when menu is open */
+body.menu-open {
+    overflow: visible !important;
+}
+
+body.menu-open * {
+    overflow: visible !important;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.burger-nav {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    width: 350px;
+    max-width: 80vw;
     background: rgba(0, 0, 0, 0.95);
-    border: 1px solid rgba(0, 255, 157, 0.3);
-    border-radius: 12px;
-    padding: 30px;
-    max-width: 90vw;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    border-left: 1px solid rgba(0, 255, 157, 0.3);
     backdrop-filter: blur(20px);
-    min-width: 300px;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    animation: slideInRight 0.3s ease;
+    overflow-y: auto;
+    z-index: 10000; /* Ensure nav is above overlay */
 }
 
-.burger-menu-header {
+@keyframes slideInRight {
+    from { 
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to { 
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.nav-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 15px;
+    padding: 20px 25px;
     border-bottom: 1px solid rgba(0, 255, 157, 0.2);
+    background: rgba(0, 255, 157, 0.05);
 }
 
-.burger-menu-title {
+.nav-header h3 {
     color: #00ff9d;
     font-size: 1.4rem;
     font-weight: 600;
     margin: 0;
 }
 
-.close-button {
+.close-menu {
     background: none;
     border: none;
     color: #ff6600;
-    font-size: 1.5rem;
+    font-size: 2rem;
     cursor: pointer;
     padding: 4px;
     border-radius: 4px;
@@ -392,80 +433,110 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    line-height: 1;
 }
 
-.close-button:hover {
+.close-menu:hover {
     background: rgba(255, 102, 0, 0.1);
     transform: scale(1.1);
 }
 
-.event-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+.nav-section {
+    padding: 20px 0;
+    border-bottom: 1px solid rgba(0, 255, 157, 0.1);
+}
+
+.nav-section:last-child {
+    border-bottom: none;
+    flex: 1;
+}
+
+.nav-section h4 {
+    color: #ffffff;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 15px 0;
+    padding: 0 25px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.nav-item {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    color: #ffffff;
+    text-align: left;
+    padding: 15px 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+    border-left: 3px solid transparent;
+}
+
+.nav-item:hover {
+    background: rgba(0, 255, 157, 0.1);
+    border-left-color: #00ff9d;
+    color: #00ff9d;
+}
+
+.nav-item.disabled {
+    color: #666666;
+    cursor: not-allowed;
+    font-style: italic;
+}
+
+.nav-item.disabled:hover {
+    background: none;
+    border-left-color: transparent;
+    color: #666666;
 }
 
 .event-item {
-    margin-bottom: 15px;
-    padding: 15px;
-    background: rgba(0, 255, 157, 0.05);
-    border: 1px solid rgba(0, 255, 157, 0.1);
-    border-radius: 8px;
+    background: none;
+    border: none;
+    color: #ffffff;
+    text-align: left;
+    padding: 15px 25px;
     cursor: pointer;
     transition: all 0.3s ease;
+    width: 100%;
+    border-left: 3px solid transparent;
+    border-bottom: 1px solid rgba(0, 255, 157, 0.05);
 }
 
 .event-item:hover {
     background: rgba(0, 255, 157, 0.1);
-    border-color: rgba(0, 255, 157, 0.3);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 255, 157, 0.1);
+    border-left-color: #00ff9d;
 }
 
 .event-item:last-child {
-    margin-bottom: 0;
+    border-bottom: none;
 }
 
-.event-name {
+.event-item-content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.event-item-content .event-name {
     color: #ffffff;
     font-weight: 600;
-    font-size: 1.1rem;
-    margin-bottom: 5px;
+    font-size: 1rem;
+    margin: 0;
 }
 
-.event-dates {
+.event-details {
     color: #cccccc;
-    font-size: 0.9rem;
-    margin-bottom: 5px;
+    font-size: 0.85rem;
 }
 
-.event-status {
-    font-size: 0.8rem;
-    padding: 2px 8px;
-    border-radius: 12px;
-    display: inline-block;
-}
-
-.event-status.active {
-    background: rgba(0, 255, 157, 0.2);
+.event-stats {
     color: #00ff9d;
-}
-
-.event-status.completed {
-    background: rgba(255, 102, 0, 0.2);
-    color: #ff6600;
-}
-
-.event-status.upcoming {
-    background: rgba(0, 162, 255, 0.2);
-    color: #00a2ff;
-}
-
-.no-events {
-    text-align: center;
-    color: #cccccc;
-    font-style: italic;
-    padding: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
 }
 
 @media (max-width: 480px) {
@@ -485,17 +556,33 @@
         padding: 6px 12px;
     }
 
-    .burger-menu-content {
-        padding: 20px;
-        min-width: 280px;
-        max-width: 95vw;
+    .burger-nav {
+        width: 90vw;
+        max-width: none;
     }
 
-    .burger-menu-title {
+    .nav-header {
+        padding: 15px 20px;
+    }
+
+    .nav-header h3 {
         font-size: 1.2rem;
     }
 
-    .event-item {
-        padding: 12px;
+    .nav-item, .event-item {
+        padding: 12px 20px;
+        font-size: 0.9rem;
+    }
+
+    .event-item-content .event-name {
+        font-size: 0.9rem;
+    }
+
+    .event-details {
+        font-size: 0.8rem;
+    }
+
+    .event-stats {
+        font-size: 0.75rem;
     }
 }

@@ -10,6 +10,7 @@ import InfoModal from './components/InfoModal';
 import InstallButton from './components/InstallButton';
 import EventManager from './components/EventManager';
 import AdminAuth from './components/AdminAuth';
+import EventDetail from './components/EventDetail';
 import { statsStore } from './stores/statsStore';
 import { configStore } from './stores/configStore';
 import './styles/eventManager.css';
@@ -22,19 +23,39 @@ const App: Component = () => {
   
   // Create a reactive signal for the current route
   const [currentRoute, setCurrentRoute] = createSignal(
-    window.location.pathname === '/admin' ? 'admin' : 'dashboard'
+    window.location.pathname === '/admin' ? 'admin' : 
+    window.location.pathname.startsWith('/events/') ? 'event' : 'dashboard'
   );
+  
+  // Extract event ID from URL
+  const [currentEventId, setCurrentEventId] = createSignal<number | null>(null);
   
   let refreshInterval: NodeJS.Timeout;
   let updateInterval: NodeJS.Timeout;
 
   const updateRoute = () => {
     const path = window.location.pathname;
+    console.log('updateRoute: Current path is:', path);
     if (path === '/admin') {
       setCurrentRoute('admin');
+      setCurrentEventId(null);
+      console.log('updateRoute: Set route to admin');
+    } else if (path.startsWith('/events/')) {
+      setCurrentRoute('event');
+      const eventIdMatch = path.match(/\/events\/(\d+)/);
+      if (eventIdMatch) {
+        const eventId = parseInt(eventIdMatch[1]);
+        setCurrentEventId(eventId);
+        console.log('updateRoute: Set route to event with ID:', eventId);
+      } else {
+        console.log('updateRoute: Event path but no ID match');
+      }
     } else {
       setCurrentRoute('dashboard');
+      setCurrentEventId(null);
+      console.log('updateRoute: Set route to dashboard');
     }
+    console.log('updateRoute: Final route state - route:', currentRoute(), 'eventId:', currentEventId());
   };
 
   onMount(async () => {
@@ -189,37 +210,21 @@ const App: Component = () => {
     </Show>
   );
   
-  // Render admin interface or dashboard based on route
+  // Render admin interface, event detail, or dashboard based on route
   if (window.location.pathname === '/admin') {
     console.log('Should render admin with auth check');
     return <AdminPage />;
   }
   
+  // Check for event detail route - use Show to make it reactive
   return (
-    <div class="app">
-      <Header />
-      
-      <main class="main-content">
-        {/* Event Status Banner for upcoming events */}
-        {!configStore.isEventActive && configStore.isUpcoming && (
-          <div class="event-banner upcoming">
-            <div class="banner-content">
-              <div class="banner-icon">⏳</div>
-              <div class="banner-text">
-                <h3>Upcoming Event: {configStore.eventName}</h3>
-                <p>Event starts in {configStore.daysUntilStart} days • Stay tuned for activity tracking!</p>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {isLoading() ? (
-          <div class="loading-container">
-            <div class="loading-spinner">🎮</div>
-            <div class="loading-text">Loading Discord Activity...</div>
-          </div>
-        ) : (
-          <>
+    <Show 
+      when={currentRoute() === 'event' && currentEventId()} 
+      fallback={
+        <div class="app">
+          <Header />
+          
+          <main class="main-content">
             <StatsCards />
             
             <div class="content-grid">
@@ -230,17 +235,20 @@ const App: Component = () => {
               
               <div class="right-column">
                 <TopGames />
-                {showRecentActivity() && <RecentActivity />}
+                <Show when={showRecentActivity()}>
+                  <RecentActivity />
+                </Show>
               </div>
             </div>
-          </>
-        )}
-      </main>
-
-      <Footer />
-      <InfoModal />
-      <InstallButton />
-    </div>
+          </main>
+          
+          <InstallButton />
+          <Footer />
+        </div>
+      }
+    >
+      <EventDetail eventId={currentEventId()!.toString()} />
+    </Show>
   );
 };
 

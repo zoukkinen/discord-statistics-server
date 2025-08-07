@@ -2,32 +2,79 @@ import { Component, createSignal, onMount, createEffect } from 'solid-js';
 import { statsStore } from '../stores/statsStore';
 import { configStore } from '../stores/configStore';
 
-const Charts: Component = () => {
+interface ChartsProps {
+  eventName?: string; // If provided, this is an event-specific view
+}
+
+const Charts: Component<ChartsProps> = (props) => {
   const [isLoading, setIsLoading] = createSignal(true);
   let canvasRef: HTMLCanvasElement | undefined;
   let chartInstance: any = null;
 
-  // Initialize data fetching
+  // Initialize data fetching only if not in event-specific mode
   onMount(async () => {
-    try {
-      console.log('Charts component mounted, fetching member history...');
-      await statsStore.fetchMemberHistory();
-    } catch (error) {
-      console.error('Error fetching member history:', error);
-    } finally {
-      setIsLoading(false);
+    console.log('Charts onMount - eventName prop:', props.eventName);
+    if (props.eventName === undefined) {
+      // Only fetch for main dashboard, not for event-specific views
+      try {
+        console.log('Charts component mounted, fetching member history for main dashboard...');
+        await statsStore.fetchMemberHistory();
+      } catch (error) {
+        console.error('Error fetching member history:', error);
+      }
+    } else {
+      console.log('Charts component mounted in event-specific mode, skipping fetch. Event:', props.eventName);
+      console.log('Charts: Current store memberHistory length:', statsStore.memberHistory.length);
     }
+    setIsLoading(false);
   });
 
-  // Create chart when data becomes available
+  // Track store data changes
+  createEffect(() => {
+    const dataLength = statsStore.memberHistory.length;
+    console.log('Charts: Store memberHistory changed, length:', dataLength);
+  });
+
+  // Create chart when data becomes available and canvas is ready
   createEffect(async () => {
-    if (isLoading()) return;
+    if (isLoading()) {
+      console.log('Charts effect: still loading, skipping...');
+      return;
+    }
     
     const memberHistory = statsStore.memberHistory;
-    console.log('Chart effect triggered - history length:', memberHistory.length);
+    console.log('Chart effect triggered - loading:', isLoading(), 'history length:', memberHistory.length);
+    console.log('EventName prop:', props.eventName);
+    console.log('Canvas ref status:', canvasRef ? 'available' : 'not available');
     
     if (!canvasRef || memberHistory.length === 0) {
-      console.log('Cannot create chart: canvas=', !!canvasRef, 'data=', memberHistory.length);
+      console.log('Cannot create chart: canvas=', !!canvasRef, 'canvasRef=', canvasRef, 'data=', memberHistory.length);
+      // If we have data but no canvas, wait a bit and try again
+      if (memberHistory.length > 0 && !canvasRef) {
+        console.log('Retrying chart creation in 100ms...');
+        setTimeout(() => {
+          // Trigger the effect again by accessing the reactive signals
+          if (canvasRef && statsStore.memberHistory.length > 0) {
+            console.log('Retry: canvas now available, creating chart...');
+            createChart();
+          }
+        }, 100);
+      }
+      return;
+    }
+
+    await createChart();
+  });
+
+  const createChart = async () => {
+    if (!canvasRef) {
+      console.log('createChart: canvas not available');
+      return;
+    }
+
+    const memberHistory = statsStore.memberHistory;
+    if (memberHistory.length === 0) {
+      console.log('createChart: no data available');
       return;
     }
 
@@ -150,10 +197,20 @@ const Charts: Component = () => {
     } catch (error) {
       console.error('Error creating chart:', error);
     }
-  });
+  };
 
-  // Computed value for whether we have data
-  const hasData = () => !isLoading() && statsStore.memberHistory.length > 0;
+  // Computed value for whether we have data - make it reactive
+  const hasData = () => {
+    const dataLength = statsStore.memberHistory.length;
+    const loading = isLoading();
+    console.log('hasData check - loading:', loading, 'dataLength:', dataLength, 'eventName:', props.eventName);
+    return !loading && dataLength > 0;
+  };
+
+  // Track hasData changes
+  createEffect(() => {
+    console.log('hasData() result:', hasData());
+  });
 
   return (
     <div class="chart-container">
@@ -164,13 +221,7 @@ const Charts: Component = () => {
           <div class="empty-icon">📊</div>
           <div class="empty-text">Loading chart data...</div>
         </div>
-      ) : !hasData() ? (
-        <div class="empty-state">
-          <div class="empty-icon">📈</div>
-          <div class="empty-text">No event data available</div>
-          <div class="empty-subtext">{configStore.config.name} event data will appear here during the event period</div>
-        </div>
-      ) : (
+      ) : hasData() ? (
         <>
           <div class="chart-wrapper" style={{ height: '300px', position: 'relative' }}>
             <canvas 
@@ -182,13 +233,22 @@ const Charts: Component = () => {
               }}
             />
           </div>
+          
+          <div class="chart-footer">
+            <div class="chart-hint">
+              🎮 {props.eventName || configStore.config.name} Discord Activity ({statsStore.memberHistory.length} data points)
+            </div>
+          </div>
         </>
-      )}
-      
-      {hasData() && (
-        <div class="chart-footer">
-          <div class="chart-hint">
-            🎮 Assembly Summer 2025 Discord Activity
+      ) : (
+        <div class="empty-state">
+          <div class="empty-icon">📈</div>
+          <div class="empty-text">No event data available</div>
+          <div class="empty-subtext">
+            {props.eventName 
+              ? `${props.eventName} data will appear here when available`
+              : `${configStore.config.name} event data will appear here during the event period`
+            }
           </div>
         </div>
       )}

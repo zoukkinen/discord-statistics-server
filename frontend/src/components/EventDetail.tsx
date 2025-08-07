@@ -1,10 +1,9 @@
-import { Component, createSignal, onMount, Show } from 'solid-js';
+import { Component, createSignal, onMount, Show, createEffect } from 'solid-js';
 import { statsStore } from '../stores/statsStore';
 import Header from './Header';
 import Footer from './Footer';
 import StatsCards from './StatsCards';
 import Charts from './Charts';
-import CurrentlyPlaying from './CurrentlyPlaying';
 import TopGames from './TopGames';
 
 interface EventDetailProps {
@@ -12,14 +11,24 @@ interface EventDetailProps {
 }
 
 const EventDetail: Component<EventDetailProps> = (props) => {
+  console.log('EventDetail: Component created with eventId:', props.eventId);
   const [isLoading, setIsLoading] = createSignal(true);
   const [event, setEvent] = createSignal<any>(null);
   const [error, setError] = createSignal<string | null>(null);
 
+  // Track store changes
+  createEffect(() => {
+    console.log('EventDetail: Store top games changed, count:', statsStore.topGames.length);
+    console.log('EventDetail: Store member history changed, count:', statsStore.memberHistory.length);
+  });
+
   onMount(async () => {
+    console.log('EventDetail: onMount started for eventId:', props.eventId);
     try {
       // Fetch event details
+      console.log('EventDetail: About to fetch /api/events/' + props.eventId);
       const response = await fetch(`/api/events/${props.eventId}`);
+      console.log('EventDetail: Event fetch response status:', response.status);
       if (!response.ok) {
         if (response.status === 404) {
           setError('Event not found');
@@ -32,10 +41,39 @@ const EventDetail: Component<EventDetailProps> = (props) => {
       const eventData = await response.json();
       setEvent(eventData);
 
-      // Load stats data for this specific event
-      // Note: We'll need to modify the stats endpoints to accept eventId parameter
-      await statsStore.fetchCurrentStats();
-      await statsStore.fetchTopGames();
+      // Fetch event-specific top games using date range
+      console.log('EventDetail: Fetching top games for date range:', eventData.startDate, 'to', eventData.endDate);
+      const topGamesResponse = await fetch(
+        `/api/top-games?start=${eventData.startDate}&end=${eventData.endDate}&limit=999`
+      );
+      if (topGamesResponse.ok) {
+        const eventTopGames = await topGamesResponse.json();
+        console.log('EventDetail: Received top games:', eventTopGames.length, 'games');
+        console.log('EventDetail: First game:', eventTopGames[0]);
+        statsStore.setTopGames(eventTopGames);
+      } else {
+        console.error('EventDetail: Failed to fetch top games:', topGamesResponse.status);
+      }
+
+      // Fetch event-specific member history
+      console.log('EventDetail: Fetching member history for date range:', eventData.startDate, 'to', eventData.endDate);
+      const memberHistoryResponse = await fetch(
+        `/api/member-history?start=${eventData.startDate}&end=${eventData.endDate}`
+      );
+      if (memberHistoryResponse.ok) {
+        const eventMemberHistory = await memberHistoryResponse.json();
+        console.log('EventDetail: Received member history:', eventMemberHistory.length, 'data points');
+        console.log('EventDetail: First data point:', eventMemberHistory[0]);
+        statsStore.setMemberHistory(eventMemberHistory);
+      } else {
+        console.error('EventDetail: Failed to fetch member history:', memberHistoryResponse.status);
+      }
+
+      // Test: verify store data was set
+      setTimeout(() => {
+        console.log('EventDetail: Final verification - Top games in store:', statsStore.topGames.length);
+        console.log('EventDetail: Final verification - Member history in store:', statsStore.memberHistory.length);
+      }, 100);
       
     } catch (err) {
       console.error('Error loading event:', err);
@@ -44,19 +82,6 @@ const EventDetail: Component<EventDetailProps> = (props) => {
       setIsLoading(false);
     }
   });
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
-  const goBack = () => {
-    window.history.pushState({}, '', '/');
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  };
 
   return (
     <div class="app">
@@ -67,38 +92,11 @@ const EventDetail: Component<EventDetailProps> = (props) => {
           <div class="error-container">
             <div class="error-content">
               <h2>⚠️ {error()}</h2>
-              <button 
-                class="back-button"
-                onClick={goBack}
-              >
-                ← Back to Dashboard
-              </button>
             </div>
           </div>
         </Show>
 
         <Show when={!error()}>
-          <div class="event-header">
-            <button 
-              class="back-button"
-              onClick={goBack}
-            >
-              ← Back to Dashboard
-            </button>
-            
-            <Show when={event()}>
-              <div class="event-info">
-                <h1 class="event-title">{event()?.name}</h1>
-                <div class="event-dates">
-                  {formatDate(event()?.start_date)} - {formatDate(event()?.end_date)}
-                </div>
-                <Show when={event()?.description}>
-                  <p class="event-description">{event()?.description}</p>
-                </Show>
-              </div>
-            </Show>
-          </div>
-
           {isLoading() ? (
             <div class="loading-container">
               <div class="loading-spinner">🎮</div>
@@ -106,16 +104,15 @@ const EventDetail: Component<EventDetailProps> = (props) => {
             </div>
           ) : (
             <>
-              <StatsCards />
+              <StatsCards isHistorical={true} />
               
               <div class="content-grid">
                 <div class="left-column">
-                  <Charts />
-                  <CurrentlyPlaying />
+                  <Charts eventName={event()?.name || "Assembly Summer 2025"} />
                 </div>
                 
                 <div class="right-column">
-                  <TopGames />
+                  <TopGames showAll={true} />
                 </div>
               </div>
             </>

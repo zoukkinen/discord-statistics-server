@@ -271,8 +271,6 @@ make heroku-health APP_NAME=your-app-name
 make heroku-open APP_NAME=your-app-name
 ```
 
-For detailed Heroku setup instructions, see [HEROKU_DEPLOY.md](docs/HEROKU_DEPLOY.md).
-
 ### Database Management
 ```bash
 # Backup database

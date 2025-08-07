@@ -28,10 +28,18 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true
       }
+    },
+    // Configure middleware for SPA fallback
+    middlewareMode: false,
+    // Handle client-side routing
+    fs: {
+      strict: false
     }
   },
   preview: {
     port: 5173,
     host: '0.0.0.0'
-  }
+  },
+  // Add explicit SPA configuration
+  appType: 'spa'
 });

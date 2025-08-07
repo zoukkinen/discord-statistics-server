@@ -1,4 +1,5 @@
-import { Component, createSignal, createResource, For, Show } from 'solid-js';
+import { Component, createSignal, createResource, For, Show, createEffect } from 'solid-js';
+import { Portal } from 'solid-js/web';
 import { configStore } from '../stores/configStore';
 
 interface EventSummary {
@@ -18,13 +19,71 @@ interface EventSummary {
 
 const Header: Component = () => {
   const [isMenuOpen, setIsMenuOpen] = createSignal(false);
+  const [currentPath, setCurrentPath] = createSignal(window.location.pathname);
 
-  // Fetch completed events
+  // Listen for route changes
+  createEffect(() => {
+    const handleRouteChange = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    
+    window.addEventListener('popstate', handleRouteChange);
+    
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+    };
+  });
+
+  // Add effect to manage body class when menu opens/closes
+  createEffect(() => {
+    if (isMenuOpen()) {
+      document.body.classList.add('menu-open');
+    } else {
+      document.body.classList.remove('menu-open');
+    }
+  });
+
+  // Fetch completed events with enhanced data
   const [eventSummaries] = createResource<EventSummary[]>(async () => {
     try {
       const response = await fetch('/api/events/summaries');
       if (response.ok) {
-        return await response.json();
+        const events = await response.json();
+        
+        // For each event, fetch member history to get peak online players
+        const enhancedEvents = await Promise.all(events.map(async (event: any) => {
+          try {
+            const memberHistoryResponse = await fetch(
+              `/api/member-history?start=${event.startDate}&end=${event.endDate}`
+            );
+            if (memberHistoryResponse.ok) {
+              const memberHistory = await memberHistoryResponse.json();
+              const peakOnline = memberHistory.reduce((max: number, point: any) => 
+                Math.max(max, point.online_members), 0);
+              
+              // Also get total games count
+              const topGamesResponse = await fetch(
+                `/api/top-games?start=${event.startDate}&end=${event.endDate}&limit=999`
+              );
+              let totalGames = event.uniqueGames; // fallback to original
+              if (topGamesResponse.ok) {
+                const games = await topGamesResponse.json();
+                totalGames = games.length;
+              }
+              
+              return {
+                ...event,
+                uniquePlayers: peakOnline, // Replace unique players with peak online
+                uniqueGames: totalGames // Replace with actual total games count
+              };
+            }
+          } catch (error) {
+            console.error('Error fetching enhanced data for event:', event.id, error);
+          }
+          return event; // fallback to original data
+        }));
+        
+        return enhancedEvents;
       }
       return [];
     } catch (error) {
@@ -51,7 +110,25 @@ const Header: Component = () => {
     });
   };
 
+  const isEventCompleted = (event: EventSummary) => {
+    const now = new Date();
+    const eventEndDate = new Date(event.endDate);
+    return !event.isActive && eventEndDate < now;
+  };
+
   const getEventStatus = () => {
+    // Check if we're on an event detail page using reactive signal
+    const isEventDetailPage = currentPath().startsWith('/events/');
+    
+    if (isEventDetailPage) {
+      // For historical events, always show as completed
+      return {
+        text: '✅ Completed event',
+        class: 'status-completed'
+      };
+    }
+    
+    // For main dashboard, use current config
     if (configStore.isEventActive) {
       return {
         text: `🟢 Live Event - ${configStore.daysRemaining} days remaining`,
@@ -117,59 +194,61 @@ const Header: Component = () => {
         </div>
 
         {/* Burger Menu Overlay */}
-        <Show when={isMenuOpen()}>
-          <div class="menu-overlay" onClick={() => setIsMenuOpen(false)}>
-            <nav class="burger-nav" onClick={(e) => e.stopPropagation()}>
-              <div class="nav-header">
-                <h3>Navigation</h3>
-                <button class="close-menu" onClick={() => setIsMenuOpen(false)}>×</button>
-              </div>
-              
-              <div class="nav-section">
-                <button class="nav-item" onClick={navigateHome}>
-                  🏠 Current Dashboard
-                </button>
-                <button class="nav-item" onClick={navigateToAdmin}>
-                  ⚙️ Admin Panel
-                </button>
-              </div>
+        <Portal>
+          <Show when={isMenuOpen()}>
+            <div class="menu-overlay" onClick={() => setIsMenuOpen(false)}>
+              <nav class="burger-nav" onClick={(e) => e.stopPropagation()}>
+                <div class="nav-header">
+                  <h3>Navigation</h3>
+                  <button class="close-menu" onClick={() => setIsMenuOpen(false)}>×</button>
+                </div>
+                
+                <div class="nav-section">
+                  <button class="nav-item" onClick={navigateHome}>
+                    🏠 Current Dashboard
+                  </button>
+                  <button class="nav-item" onClick={navigateToAdmin}>
+                    ⚙️ Admin Panel
+                  </button>
+                </div>
 
-              <div class="nav-section">
-                <h4>Completed Events</h4>
-                <Show 
-                  when={eventSummaries.loading}
-                  fallback={
-                    <Show 
-                      when={eventSummaries() && eventSummaries()!.length > 0}
-                      fallback={<div class="nav-item disabled">No completed events</div>}
-                    >
-                      <For each={eventSummaries()!.filter(event => !event.isActive)}>
-                        {(event) => (
-                          <button 
-                            class="nav-item event-item"
-                            onClick={() => navigateToEvent(event.id)}
-                          >
-                            <div class="event-item-content">
-                              <div class="event-name">{event.name}</div>
-                              <div class="event-details">
-                                {formatEventDate(event.startDate)} - {formatEventDate(event.endDate)}
+                <div class="nav-section">
+                  <h4>Completed Events</h4>
+                  <Show 
+                    when={eventSummaries.loading}
+                    fallback={
+                      <Show 
+                        when={eventSummaries() && eventSummaries()!.length > 0}
+                        fallback={<div class="nav-item disabled">No completed events</div>}
+                      >
+                        <For each={eventSummaries()!.filter(event => isEventCompleted(event))}>
+                          {(event) => (
+                            <button 
+                              class="nav-item event-item"
+                              onClick={() => navigateToEvent(event.id)}
+                            >
+                              <div class="event-item-content">
+                                <div class="event-name">{event.name}</div>
+                                <div class="event-details">
+                                  {formatEventDate(event.startDate)} - {formatEventDate(event.endDate)}
+                                </div>
+                                <div class="event-stats">
+                                  {event.uniquePlayers} peak online • {event.uniqueGames} games
+                                </div>
                               </div>
-                              <div class="event-stats">
-                                {event.uniquePlayers} players • {event.uniqueGames} games
-                              </div>
-                            </div>
-                          </button>
-                        )}
-                      </For>
-                    </Show>
-                  }
-                >
-                  <div class="nav-item disabled">Loading events...</div>
-                </Show>
-              </div>
-            </nav>
-          </div>
-        </Show>
+                            </button>
+                          )}
+                        </For>
+                      </Show>
+                    }
+                  >
+                    <div class="nav-item disabled">Loading events...</div>
+                  </Show>
+                </div>
+              </nav>
+            </div>
+          </Show>
+        </Portal>
       </div>
     </header>
   );
