@@ -1,30 +1,45 @@
 import { defineConfig } from 'vite';
-import solid from 'vite-plugin-solid';
+import solidPlugin from 'vite-plugin-solid';
+import { resolve } from 'path';
 
 export default defineConfig({
-  plugins: [solid()],
+  plugins: [solidPlugin()],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'frontend/src')
+    }
+  },
   root: 'frontend',
+  publicDir: '../public',
   build: {
     outDir: '../public/dist',
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: 'frontend/index.html'
+        main: resolve(__dirname, 'frontend/index.html')
       }
     }
   },
   server: {
     port: 5173,
-    host: '0.0.0.0', // Allow external connections
+    host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://discord-bot-dev:3000',
+        target: 'http://localhost:3000',
         changeOrigin: true
       }
+    },
+    // Configure middleware for SPA fallback
+    middlewareMode: false,
+    // Handle client-side routing
+    fs: {
+      strict: false
     }
   },
-  define: {
-    // Enable HMR for better development experience
-    __DEV__: JSON.stringify(process.env.NODE_ENV !== 'production')
-  }
+  preview: {
+    port: 5173,
+    host: '0.0.0.0'
+  },
+  // Add explicit SPA configuration
+  appType: 'spa'
 });

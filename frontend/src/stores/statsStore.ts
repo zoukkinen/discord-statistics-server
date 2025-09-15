@@ -189,6 +189,19 @@ export const statsStore = {
     return currentStats().currentGames.reduce((sum, game) => sum + game.player_count, 0);
   },
 
+  // Manual setters for event-specific data
+  setTopGames(games: TopGame[]) {
+    setTopGames(games);
+  },
+
+  setMemberHistory(history: MemberStats[]) {
+    setMemberHistory(history);
+  },
+
+  setCurrentStats(stats: CurrentStats) {
+    setCurrentStats(stats);
+  },
+
   get lastUpdated() {
     const timestamp = currentStats().memberStats?.timestamp;
     if (!timestamp) return null;

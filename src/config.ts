@@ -53,4 +53,8 @@ export class Config {
         
         return now >= eventStart;
     }
+
+    public static getAdminPassword(): string {
+        return process.env.ADMIN_PASSWORD || 'admin123';
+    }
 }

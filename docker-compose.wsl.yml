@@ -1,0 +1,18 @@
+# WSL-specific optimizations
+# This file is automatically included on WSL systems
+
+services:
+  discord-bot:
+    # Use named volumes for better performance on WSL
+    volumes:
+      - discord_data:/app/data
+      # WSL performs better with named volumes than bind mounts
+    environment:
+      - COMPOSE_DOCKER_CLI_BUILD=1
+      - DOCKER_BUILDKIT=1
+    # Force AMD64 platform for better compatibility
+    platform: linux/amd64
+
+  postgres:
+    # Force AMD64 platform for better compatibility
+    platform: linux/amd64

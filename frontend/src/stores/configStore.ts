@@ -12,6 +12,7 @@ export interface ConfigResponse {
   event: EventConfig;
   isEventActive: boolean;
   hasEventStarted: boolean;
+  activeEventId: number | null;
 }
 
 // Create reactive signals for configuration
@@ -25,7 +26,8 @@ const [config, setConfig] = createSignal<EventConfig>({
 
 const [eventStatus, setEventStatus] = createSignal({
   isEventActive: false,
-  hasEventStarted: false
+  hasEventStarted: false,
+  activeEventId: null as number | null
 });
 
 const [isLoading, setIsLoading] = createSignal(false);
@@ -51,7 +53,8 @@ export const configStore = {
       setConfig(data.event);
       setEventStatus({
         isEventActive: data.isEventActive,
-        hasEventStarted: data.hasEventStarted
+        hasEventStarted: data.hasEventStarted,
+        activeEventId: data.activeEventId
       });
     } catch (error) {
       console.error('Error fetching config:', error);
@@ -83,10 +86,26 @@ export const configStore = {
   },
 
   get isEventActive() {
-    const now = new Date();
-    const start = new Date(config().startDate);
-    const end = new Date(config().endDate);
-    return now >= start && now <= end;
+    return eventStatus().isEventActive;
+  },
+
+  get hasEventStarted() {
+    return eventStatus().hasEventStarted;
+  },
+
+  get activeEventId() {
+    return eventStatus().activeEventId;
+  },
+
+  get isUpcoming() {
+    return !eventStatus().hasEventStarted;
+  },
+
+  get eventState() {
+    const status = eventStatus();
+    if (status.isEventActive) return 'active';
+    if (status.hasEventStarted) return 'completed';
+    return 'upcoming';
   },
 
   get daysUntilStart() {

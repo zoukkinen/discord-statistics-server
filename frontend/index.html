@@ -7,6 +7,7 @@
     
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#00ff9d">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Discord Stats">
@@ -25,81 +26,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Safari-specific CSS fixes -->
+    <!-- Critical CSS to prevent FOUC -->
     <style>
-        /* Safari-specific fixes */
-        html {
-            background: #000000;
-            -webkit-background-size: cover;
-            -moz-background-size: cover;
-            -o-background-size: cover;
-            background-size: cover;
-        }
-        
-        /* Enhanced Safari radial gradient support */
-        @supports (-webkit-appearance:none) {
-            body {
-                background: #000000 !important; /* Force solid black on Safari as fallback */
-            }
-            
-            /* Ensure the pseudo-element works on Safari */
-            body::before {
-                -webkit-transform: translateZ(0); /* Force hardware acceleration */
-                transform: translateZ(0);
-                will-change: transform;
-            }
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-            background: #000000; /* Fallback for Safari */
-            background: -webkit-linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #111111 100%); /* Safari */
-            background: -moz-linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #111111 100%); /* Firefox */
-            background: linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #111111 100%); /* Standard */
-            color: #ffffff;
-            min-height: 100vh;
             margin: 0;
-            overflow-x: hidden;
-            position: relative;
+            background: #000000;
+            color: #ffffff;
+            font-family: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            min-height: 100vh;
         }
-        
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            /* Fallback for older browsers */
-            background: rgba(0, 255, 157, 0.02);
-            /* Safari-specific radial gradients */
-            background: 
-                -webkit-radial-gradient(20% 20%, circle, rgba(0, 255, 157, 0.05) 0%, transparent 50%),
-                -webkit-radial-gradient(80% 80%, circle, rgba(255, 102, 0, 0.05) 0%, transparent 50%),
-                -webkit-radial-gradient(40% 60%, circle, rgba(0, 162, 255, 0.02) 0%, transparent 50%);
-            /* Standard radial gradients */
-            background: 
-                radial-gradient(circle at 20% 20%, rgba(0, 255, 157, 0.05) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(255, 102, 0, 0.05) 0%, transparent 50%),
-                radial-gradient(circle at 40% 60%, rgba(0, 162, 255, 0.02) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: -1;
-        }
-        
-        /* Safari-specific fallback */
-        @supports (-webkit-appearance: none) and (not (backdrop-filter: blur(1px))) {
-            body::before {
-                background: 
-                    -webkit-gradient(radial, 20% 20%, 0, 20% 20%, 300, from(rgba(0, 255, 157, 0.05)), to(transparent)),
-                    -webkit-gradient(radial, 80% 80%, 0, 80% 80%, 300, from(rgba(255, 102, 0, 0.05)), to(transparent)),
-                    -webkit-gradient(radial, 40% 60%, 0, 40% 60%, 300, from(rgba(0, 162, 255, 0.02)), to(transparent));
-            }
+        #root {
+            min-height: 100vh;
         }
     </style>
 </head>

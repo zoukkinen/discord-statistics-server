@@ -2,7 +2,11 @@ import { Component, For } from 'solid-js';
 import { statsStore } from '../stores/statsStore';
 import { configStore } from '../stores/configStore';
 
-const TopGames: Component = () => {
+interface TopGamesProps {
+  showAll?: boolean; // If true, show all games instead of limiting to top 8
+}
+
+const TopGames: Component<TopGamesProps> = (props) => {
   const formatTime = (minutes: number) => {
     if (minutes < 60) return `${Math.round(minutes)}m`;
     const hours = Math.floor(minutes / 60);
@@ -55,7 +59,7 @@ const TopGames: Component = () => {
         </div>
       ) : (
         <div class="game-list">
-          <For each={statsStore.topGames.slice(0, 8)}>
+          <For each={props.showAll ? statsStore.topGames : statsStore.topGames.slice(0, 8)}>
             {(game, index) => (
               <div class="game-item">
                 <span class="game-rank">{getRankEmoji(index())}</span>

@@ -1,0 +1,127 @@
+/* Event Detail Styles */
+.event-header {
+    margin-bottom: 20px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.85);
+    border-radius: 12px;
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 255, 157, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.back-button {
+    background: rgba(0, 255, 157, 0.1);
+    border: 1px solid rgba(0, 255, 157, 0.3);
+    color: #00ff9d;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    margin-bottom: 15px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.back-button:hover {
+    background: rgba(0, 255, 157, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 255, 157, 0.2);
+}
+
+.event-info {
+    text-align: center;
+}
+
+.event-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    background: linear-gradient(45deg, #00ff9d, #ff6600, #00a2ff);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradientShift 4s ease-in-out infinite;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+.event-dates {
+    color: #cccccc;
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+.event-description {
+    color: #ffffff;
+    font-size: 1rem;
+    line-height: 1.5;
+    max-width: 600px;
+    margin: 0 auto;
+    opacity: 0.9;
+}
+
+.error-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    padding: 40px;
+}
+
+.error-content {
+    text-align: center;
+    background: rgba(0, 0, 0, 0.85);
+    padding: 40px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 102, 0, 0.3);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.error-content h2 {
+    color: #ff6600;
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+}
+
+@keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+@media (max-width: 768px) {
+    .event-title {
+        font-size: 1.8rem;
+    }
+    
+    .event-dates {
+        font-size: 1rem;
+    }
+    
+    .event-header {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .error-content {
+        padding: 30px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .event-title {
+        font-size: 1.5rem;
+    }
+    
+    .event-dates {
+        font-size: 0.9rem;
+    }
+    
+    .back-button {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+    }
+}
