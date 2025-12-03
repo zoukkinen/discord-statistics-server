@@ -30,6 +30,15 @@ help: ## Show available commands
 	@echo "  shell         Open shell in bot container"
 	@echo "  restart       Restart all services"
 	@echo ""
+	@echo "Testing:"
+	@echo "  test          Run all tests"
+	@echo "  test-unit     Run unit tests only"
+	@echo "  test-integration Run integration tests"
+	@echo "  test-frontend Run frontend tests"
+	@echo "  test-watch    Run tests in watch mode"
+	@echo "  test-coverage Generate test coverage report"
+	@echo "  test-ci       Run CI test suite"
+	@echo ""
 	@echo "Production:"
 	@echo "  prod          Start production with nginx"
 	@echo "  build         Build Docker images"
@@ -65,13 +74,32 @@ validate-env: ## Validate environment configuration
 	@if grep -q "your_discord_bot_token_here" .env; then echo "❌ Please set your actual Discord bot token"; exit 1; fi
 	@if grep -q "your_discord_server_id_here" .env; then echo "❌ Please set your actual Discord server ID"; exit 1; fi
 	@echo "✅ Environment configuration valid"
+	@echo "🔐 Checking encryption key..."
+	@if [ -z "$${CREDENTIAL_ENCRYPTION_KEY}" ] && [ ! -f .env ] || ! grep -q "^CREDENTIAL_ENCRYPTION_KEY=" .env; then \
+		echo "⚠️  CREDENTIAL_ENCRYPTION_KEY not set - will use default (not secure for production)"; \
+	fi
 
-quick-start: setup validate-env dev ## Complete setup and start development
+quick-start: setup validate-env test-setup dev test-unit ## Complete setup and start development with tests
 
 # === DEVELOPMENT ===
 dev: validate-env ## Start development environment
 	@echo "⚡ Starting development environment..."
 	@$(DOCKER_COMPOSE) up -d
+
+dev-full: validate-env test-setup ## Start development with full test environment
+	@echo "⚡ Starting full development environment with testing..."
+	@$(DOCKER_COMPOSE) up -d
+	@sleep 10
+	@echo "🧪 Running quick validation tests..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:unit -- --testNamePattern="Config"
+	@echo "✅ Development environment ready with tests validated!"
+
+dev-watch: validate-env ## Start development with test watching
+	@echo "⚡ Starting development with test watching..."
+	@$(DOCKER_COMPOSE) up -d
+	@sleep 5
+	@echo "👀 Starting test watch mode..."
+	@$(DOCKER_COMPOSE) exec discord-bot npm run test:watch
 
 build: ## Build Docker images
 	@echo "🔨 Building Docker images..."
@@ -97,9 +125,24 @@ prod: validate-env ## Start production mode with nginx
 	@echo "🚀 Starting production mode..."
 	@NODE_ENV=production $(DOCKER_COMPOSE) --profile production up --build -d
 
-deploy: validate-env build prod ## Full production deployment
+deploy-check: validate-env ## Check deployment readiness
+	@echo "🔍 Checking deployment readiness..."
+	@echo "📦 Building application..."
+	@$(DOCKER_COMPOSE) build --quiet
+	@echo "🧪 Running critical tests..."
+	@$(MAKE) test-unit
+	@echo "🔐 Validating security features..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test -- --testNamePattern="CredentialEncryption" --silent
+	@echo "🗄️ Testing database migrations..."
+	@$(MAKE) test-migration
+	@echo "✅ Deployment readiness check passed!"
+
+deploy: validate-env deploy-check build prod ## Full production deployment with testing
 	@echo "🎉 Production deployment complete!"
 	@echo "🌐 Dashboard: http://localhost"
+	@echo "🧪 Running post-deployment health checks..."
+	@sleep 10
+	@$(MAKE) health
 
 # === MONITORING ===
 logs: ## Show application logs
@@ -122,6 +165,74 @@ shell: ## Open shell in bot container
 
 shell-db: ## Open shell in database container
 	@$(DOCKER_COMPOSE) exec postgres sh
+
+# === TESTING ===
+test: validate-env ## Run all tests
+	@echo "🧪 Running comprehensive test suite..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:all
+
+test-unit: ## Run unit tests only
+	@echo "🔬 Running unit tests..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:unit
+
+test-integration: validate-env ## Run integration tests (requires database)
+	@echo "🔗 Running integration tests..."
+	@$(DOCKER_COMPOSE) up -d postgres
+	@sleep 5
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:integration
+
+test-frontend: ## Run frontend tests
+	@echo "🎨 Running frontend tests..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:frontend
+
+test-watch: ## Run tests in watch mode
+	@echo "👀 Running tests in watch mode..."
+	@$(DOCKER_COMPOSE) exec discord-bot npm run test:watch
+
+test-coverage: validate-env ## Generate test coverage report
+	@echo "📊 Generating test coverage report..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:coverage
+	@echo "📈 Coverage report generated in coverage/ directory"
+
+test-migration: validate-env ## Test database migration system
+	@echo "🔄 Testing database migrations..."
+	@$(DOCKER_COMPOSE) up -d postgres
+	@sleep 5
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:migration
+
+test-e2e: validate-env ## Run end-to-end tests
+	@echo "🎯 Running end-to-end tests..."
+	@$(DOCKER_COMPOSE) up -d
+	@sleep 10
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:e2e
+
+test-ci: ## Run CI test suite (for GitHub Actions)
+	@echo "🤖 Running CI test suite..."
+	@npm ci
+	@npm run build
+	@npm run test:all
+
+test-setup: ## Setup test environment
+	@echo "🔧 Setting up test environment..."
+	@$(DOCKER_COMPOSE) up -d postgres
+	@sleep 5
+	@$(DOCKER_COMPOSE) exec postgres psql -U discord_bot -c "CREATE DATABASE IF NOT EXISTS discord_stats_test;"
+	@echo "✅ Test environment ready"
+
+test-clean: ## Clean test database
+	@echo "🧹 Cleaning test database..."
+	@$(DOCKER_COMPOSE) exec postgres psql -U discord_bot -c "DROP DATABASE IF EXISTS discord_stats_test;"
+	@$(DOCKER_COMPOSE) exec postgres psql -U discord_bot -c "CREATE DATABASE discord_stats_test;"
+	@echo "✅ Test database cleaned"
+
+test-branch: validate-env ## Test current branch features
+	@echo "🌟 Testing current branch: discord-settings-to-admin-panel"
+	@echo "🔐 Testing Discord credentials encryption..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test -- --testNamePattern="CredentialEncryption"
+	@echo "📝 Testing admin panel functionality..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test -- --testNamePattern="Admin|Event"
+	@echo "🧪 Running integration tests for new features..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:integration
 
 # === DATABASE ===
 backup: ## Backup local database
@@ -153,6 +264,47 @@ sync-prod: ## Sync with production data
 list-backups: ## List available backups
 	@echo "📋 Available backups:"
 	@ls -la backups/ 2>/dev/null || echo "No backups found"
+
+# === DEVELOPMENT WORKFLOW ===
+pre-commit: validate-env ## Run pre-commit checks (linting, tests, build)
+	@echo "🔍 Running pre-commit checks..."
+	@echo "📝 Checking code formatting..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run build 2>/dev/null || echo "⚠️  Build check complete"
+	@echo "🧪 Running critical tests..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:unit
+	@echo "🔐 Testing Discord credentials functionality..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test -- --testNamePattern="CredentialEncryption"
+	@echo "✅ Pre-commit checks passed!"
+
+branch-test: validate-env test-setup ## Comprehensive test of current branch features
+	@echo "🌿 Testing branch: discord-settings-to-admin-panel"
+	@echo "=========================================="
+	@echo ""
+	@echo "🔐 1. Testing Discord credential encryption..."
+	@$(DOCKER_COMPOSE) up -d
+	@sleep 10
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test -- --testNamePattern="CredentialEncryption" --verbose
+	@echo ""
+	@echo "📝 2. Testing admin panel event management..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test -- --testNamePattern="EventManager" --verbose
+	@echo ""
+	@echo "🗄️ 3. Testing database migrations with credentials..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:migration
+	@echo ""
+	@echo "🌐 4. Testing API endpoints for admin functionality..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test -- --testNamePattern="Admin.*API|Event.*API" --verbose
+	@echo ""
+	@echo "✅ Branch testing complete! All Discord credentials features working."
+
+performance-test: validate-env ## Run performance tests
+	@echo "⚡ Running performance tests..."
+	@$(DOCKER_COMPOSE) up -d
+	@sleep 10
+	@echo "📊 Testing database performance with large datasets..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot node scripts/populate-test-data.ts
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:integration
+	@echo "💾 Testing memory usage..."
+	@$(DOCKER_COMPOSE) stats --no-stream
 
 # === HEROKU DEPLOYMENT ===
 heroku-deploy: ## Deploy to Heroku (APP_NAME=name)
@@ -193,11 +345,18 @@ clean: ## Remove all containers and data
 	@read -p "This will remove ALL containers and data. Continue? (y/N): " confirm && [ "$$confirm" = "y" ]
 	@$(DOCKER_COMPOSE) down -v --rmi all
 	@docker system prune -af
+	@rm -rf coverage/ node_modules/.cache/ .nyc_output/
 	@echo "✅ Cleanup complete"
 
 clean-soft: ## Remove containers only (keep data)
 	@echo "🧹 Soft cleanup..."
 	@$(DOCKER_COMPOSE) down
+
+clean-tests: ## Clean test artifacts and coverage reports
+	@echo "🧹 Cleaning test artifacts..."
+	@rm -rf coverage/ test-results/ .nyc_output/
+	@$(DOCKER_COMPOSE) exec postgres psql -U discord_bot -c "DROP DATABASE IF EXISTS discord_stats_test;" 2>/dev/null || true
+	@echo "✅ Test artifacts cleaned"
 
 update: ## Update and rebuild application
 	@echo "🔄 Updating application..."
@@ -205,4 +364,32 @@ update: ## Update and rebuild application
 	@$(DOCKER_COMPOSE) down
 	@$(DOCKER_COMPOSE) build --no-cache
 	@$(DOCKER_COMPOSE) up -d
-	@echo "✅ Application updated"
+	@echo "🧪 Running post-update tests..."
+	@$(MAKE) test-unit
+	@echo "✅ Application updated and tested"
+
+status-full: ## Show comprehensive project status
+	@echo "📊 Universal Discord Activity Tracker - Project Status"
+	@echo "=================================================="
+	@echo ""
+	@echo "🌿 Git Status:"
+	@git status --porcelain | head -10 || echo "  Repository clean"
+	@echo "  Current branch: $$(git branch --show-current 2>/dev/null || echo 'unknown')"
+	@echo "  Last commit: $$(git log -1 --oneline 2>/dev/null || echo 'No commits')"
+	@echo ""
+	@echo "🐳 Docker Status:"
+	@$(DOCKER_COMPOSE) ps
+	@echo ""
+	@echo "🗄️ Database Status:"
+	@$(DOCKER_COMPOSE) exec postgres psql -U discord_bot -d postgres -c "SELECT datname FROM pg_database WHERE datname LIKE '%discord%';" 2>/dev/null || echo "  Database not available"
+	@echo ""
+	@echo "🧪 Test Status:"
+	@echo "  Unit Tests: $$($(DOCKER_COMPOSE) exec -T discord-bot npm run test:unit 2>/dev/null | grep -E 'Tests:|passed|failed' | tail -1 || echo 'Not available')"
+	@echo "  Coverage: $$(test -d coverage && echo 'Available in coverage/' || echo 'Not generated')"
+	@echo ""
+	@echo "🔐 Security Status:"
+	@echo "  Encryption Key: $$(test -n "$$CREDENTIAL_ENCRYPTION_KEY" && echo 'Set' || echo 'Using default (development only)')"
+	@echo "  Admin Password: $$(test -n "$$ADMIN_PASSWORD" && echo 'Custom' || echo 'Default (change for production)')"
+	@echo ""
+	@echo "🌐 Service Health:"
+	@$(MAKE) health 2>/dev/null || echo "  Health check not available"

@@ -7,6 +7,8 @@ interface EventData {
   endDate: string;
   timezone: string;
   description?: string;
+  discordToken?: string;
+  discordGuildId?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -34,6 +36,8 @@ interface CreateEventData {
   endDate: string;
   timezone: string;
   description: string;
+  discordToken?: string;
+  discordGuildId?: string;
 }
 
 interface EventManagerProps {
@@ -48,7 +52,9 @@ const EventManager: Component<EventManagerProps> = (props) => {
     startDate: '',
     endDate: '',
     timezone: 'Europe/Helsinki',
-    description: ''
+    description: '',
+    discordToken: '',
+    discordGuildId: ''
   });
 
   // Resource for fetching events
@@ -113,7 +119,9 @@ const EventManager: Component<EventManagerProps> = (props) => {
         startDate: start.toISOString(),
         endDate: end.toISOString(),
         timezone: data.timezone,
-        description: data.description.trim() || undefined
+        description: data.description.trim() || undefined,
+        discordToken: data.discordToken?.trim() || undefined,
+        discordGuildId: data.discordGuildId?.trim() || undefined
       };
       
       const response = await fetch('/api/events', {
@@ -131,7 +139,9 @@ const EventManager: Component<EventManagerProps> = (props) => {
           startDate: '',
           endDate: '',
           timezone: 'Europe/Helsinki',
-          description: ''
+          description: '',
+          discordToken: '',
+          discordGuildId: ''
         });
         refetchEvents();
       } else {
@@ -379,6 +389,50 @@ const EventManager: Component<EventManagerProps> = (props) => {
                 placeholder="Brief description of the gaming event..."
                 rows={3}
               />
+            </div>
+
+            {/* Discord Credentials Section */}
+            <div class="form-group full-width discord-credentials">
+              <h3>🤖 Discord Bot Configuration (Optional)</h3>
+              <p class="help-text">
+                Provide Discord credentials to connect this event to a specific Discord server. 
+                Leave empty to use the default environment configuration.
+              </p>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="discordToken">
+                    Discord Bot Token
+                    <span class="security-indicator">🔒</span>
+                  </label>
+                  <input
+                    type="password"
+                    id="discordToken"
+                    value={formData().discordToken || ''}
+                    onInput={(e) => handleFormChange('discordToken', e.currentTarget.value)}
+                    placeholder="MTQwMDEwNzY0NDExNDU2NzIzOA.GTOM10...."
+                    autocomplete="off"
+                  />
+                  <small class="help-text">
+                    Bot token from Discord Developer Portal. Will be encrypted and stored securely.
+                  </small>
+                </div>
+
+                <div class="form-group">
+                  <label for="discordGuildId">Discord Server ID</label>
+                  <input
+                    type="text"
+                    id="discordGuildId"
+                    value={formData().discordGuildId || ''}
+                    onInput={(e) => handleFormChange('discordGuildId', e.currentTarget.value)}
+                    placeholder="1210195869513547807"
+                    pattern="[0-9]{17,19}"
+                  />
+                  <small class="help-text">
+                    Your Discord server's ID (17-19 digit number). Enable Developer Mode in Discord to copy it.
+                  </small>
+                </div>
+              </div>
             </div>
           </div>
 

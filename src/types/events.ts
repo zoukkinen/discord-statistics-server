@@ -5,7 +5,9 @@ export interface Event {
     endDate: string;
     timezone: string;
     description: string;
-    guildId: string;
+    guildId: string; // Legacy field for backward compatibility
+    discordToken?: string; // Encrypted Discord bot token (optional - uses env var if null)
+    discordGuildId?: string; // Discord guild ID for this event (optional - uses env var if null)
     isActive: boolean;
     createdAt?: string;
     updatedAt?: string;

@@ -1,6 +1,7 @@
 import { Client, Pool, PoolClient } from 'pg';
 import { DatabaseAdapter, MemberStats, GameStats, GameSession } from './types';
 import { MigrationRunner } from './MigrationRunner';
+import { CredentialEncryption } from '../utils/credentialEncryption';
 
 export class PostgreSQLAdapter implements DatabaseAdapter {
     private client: Client | null = null;
@@ -537,6 +538,29 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
         const guildId = event.guildId || event.guild_id;
         const isActive = event.isActive !== undefined ? event.isActive : event.is_active || false;
         
+        // Handle Discord credentials with encryption
+        let encryptedToken = null;
+        let discordGuildId = null;
+        
+        if (event.discordToken && event.discordGuildId) {
+            // Validate credentials before encrypting
+            if (!CredentialEncryption.validateDiscordToken(event.discordToken)) {
+                throw new Error('Invalid Discord token format');
+            }
+            if (!CredentialEncryption.validateDiscordGuildId(event.discordGuildId)) {
+                throw new Error('Invalid Discord Guild ID format');
+            }
+            
+            encryptedToken = CredentialEncryption.encrypt(event.discordToken);
+            discordGuildId = event.discordGuildId;
+            
+            console.log('Creating event with Discord credentials:', {
+                name: event.name,
+                discordGuildId: discordGuildId,
+                tokenSanitized: CredentialEncryption.sanitizeTokenForLogging(event.discordToken)
+            });
+        }
+        
         console.log('Creating event with data:', {
             name: event.name,
             description: event.description,
@@ -544,24 +568,45 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             endDate: endDate,
             timezone: event.timezone,
             guildId: guildId,
-            isActive: isActive
+            isActive: isActive,
+            hasDiscordCredentials: !!encryptedToken
         });
         
         const result = await this.client.query(`
-            INSERT INTO events (name, description, start_date, end_date, timezone, guild_id, is_active)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO events (name, description, start_date, end_date, timezone, guild_id, discord_token, discord_guild_id, is_active)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *
         `, [
             event.name,
             event.description,
-            startDate, // Properly mapped camelCase to snake_case
-            endDate,   // Properly mapped camelCase to snake_case
+            startDate,
+            endDate,
             event.timezone,
-            guildId,   // Properly mapped camelCase to snake_case
-            isActive   // Properly mapped camelCase to snake_case
+            guildId,
+            encryptedToken,
+            discordGuildId,
+            isActive
         ]);
         
-        return result.rows[0];
+        const createdEvent = result.rows[0];
+        
+        // Decrypt token for return (but don't log it)
+        if (createdEvent.discord_token) {
+            try {
+                createdEvent.discordToken = CredentialEncryption.decrypt(createdEvent.discord_token);
+                createdEvent.discordGuildId = createdEvent.discord_guild_id;
+                // Remove the encrypted version from the returned object
+                delete createdEvent.discord_token;
+                delete createdEvent.discord_guild_id;
+            } catch (error) {
+                console.error('⚠️  Failed to decrypt Discord token after creation:', error);
+                // Remove encrypted fields if decryption fails
+                delete createdEvent.discord_token;
+                delete createdEvent.discord_guild_id;
+            }
+        }
+        
+        return createdEvent;
     }
 
     public async getEvents(guildId: string): Promise<any[]> {
@@ -573,7 +618,28 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             ORDER BY created_at DESC
         `, [guildId]);
         
-        return result.rows;
+        // Decrypt Discord tokens and transform field names
+        return result.rows.map(event => {
+            const transformedEvent = { ...event };
+            
+            if (event.discord_token) {
+                try {
+                    transformedEvent.discordToken = CredentialEncryption.decrypt(event.discord_token);
+                    transformedEvent.discordGuildId = event.discord_guild_id;
+                } catch (error) {
+                    console.error('⚠️  Failed to decrypt Discord token for event:', event.id, error);
+                    // Set to null if decryption fails
+                    transformedEvent.discordToken = null;
+                    transformedEvent.discordGuildId = null;
+                }
+            }
+            
+            // Remove encrypted fields from the response
+            delete transformedEvent.discord_token;
+            delete transformedEvent.discord_guild_id;
+            
+            return transformedEvent;
+        });
     }
 
     public async getEvent(id: number): Promise<any> {
@@ -584,7 +650,26 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             WHERE id = $1
         `, [id]);
         
-        return result.rows[0] || null;
+        const event = result.rows[0];
+        if (!event) return null;
+        
+        // Decrypt Discord credentials if present
+        if (event.discord_token) {
+            try {
+                event.discordToken = CredentialEncryption.decrypt(event.discord_token);
+                event.discordGuildId = event.discord_guild_id;
+            } catch (error) {
+                console.error('⚠️  Failed to decrypt Discord token for event:', event.id, error);
+                event.discordToken = null;
+                event.discordGuildId = null;
+            }
+        }
+        
+        // Remove encrypted fields from the response
+        delete event.discord_token;
+        delete event.discord_guild_id;
+        
+        return event;
     }
 
     public async getActiveEvent(guildId: string): Promise<any> {
@@ -596,7 +681,26 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             LIMIT 1
         `, [guildId]);
         
-        return result.rows[0] || null;
+        const event = result.rows[0];
+        if (!event) return null;
+        
+        // Decrypt Discord credentials if present
+        if (event.discord_token) {
+            try {
+                event.discordToken = CredentialEncryption.decrypt(event.discord_token);
+                event.discordGuildId = event.discord_guild_id;
+            } catch (error) {
+                console.error('⚠️  Failed to decrypt Discord token for active event:', event.id, error);
+                event.discordToken = null;
+                event.discordGuildId = null;
+            }
+        }
+        
+        // Remove encrypted fields from the response
+        delete event.discord_token;
+        delete event.discord_guild_id;
+        
+        return event;
     }
 
     public async updateEvent(id: number, updates: any): Promise<any> {
@@ -606,7 +710,59 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
         const values = [];
         let paramIndex = 1;
         
-        for (const [key, value] of Object.entries(updates)) {
+        // Handle Discord credentials specially
+        const processedUpdates = { ...updates };
+        
+        if (updates.discordToken !== undefined || updates.discordGuildId !== undefined) {
+            // If either Discord credential is being updated, handle both
+            if (updates.discordToken && updates.discordGuildId) {
+                // Validate credentials before encrypting
+                if (!CredentialEncryption.validateDiscordToken(updates.discordToken)) {
+                    throw new Error('Invalid Discord token format');
+                }
+                if (!CredentialEncryption.validateDiscordGuildId(updates.discordGuildId)) {
+                    throw new Error('Invalid Discord Guild ID format');
+                }
+                
+                processedUpdates.discord_token = CredentialEncryption.encrypt(updates.discordToken);
+                processedUpdates.discord_guild_id = updates.discordGuildId;
+                
+                console.log('Updating event Discord credentials:', {
+                    eventId: id,
+                    discordGuildId: updates.discordGuildId,
+                    tokenSanitized: CredentialEncryption.sanitizeTokenForLogging(updates.discordToken)
+                });
+            } else if (updates.discordToken === null || updates.discordGuildId === null) {
+                // Clear both if one is explicitly set to null
+                processedUpdates.discord_token = null;
+                processedUpdates.discord_guild_id = null;
+                console.log('Clearing Discord credentials for event:', id);
+            }
+            
+            // Remove the camelCase versions
+            delete processedUpdates.discordToken;
+            delete processedUpdates.discordGuildId;
+        }
+        
+        // Convert camelCase to snake_case for database fields
+        if (processedUpdates.startDate) {
+            processedUpdates.start_date = processedUpdates.startDate;
+            delete processedUpdates.startDate;
+        }
+        if (processedUpdates.endDate) {
+            processedUpdates.end_date = processedUpdates.endDate;
+            delete processedUpdates.endDate;
+        }
+        if (processedUpdates.guildId) {
+            processedUpdates.guild_id = processedUpdates.guildId;
+            delete processedUpdates.guildId;
+        }
+        if (processedUpdates.isActive !== undefined) {
+            processedUpdates.is_active = processedUpdates.isActive;
+            delete processedUpdates.isActive;
+        }
+        
+        for (const [key, value] of Object.entries(processedUpdates)) {
             fields.push(`${key} = $${paramIndex}`);
             values.push(value);
             paramIndex++;
@@ -625,7 +781,26 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             RETURNING *
         `, values);
         
-        return result.rows[0];
+        const updatedEvent = result.rows[0];
+        if (!updatedEvent) return null;
+        
+        // Decrypt Discord credentials for return
+        if (updatedEvent.discord_token) {
+            try {
+                updatedEvent.discordToken = CredentialEncryption.decrypt(updatedEvent.discord_token);
+                updatedEvent.discordGuildId = updatedEvent.discord_guild_id;
+            } catch (error) {
+                console.error('⚠️  Failed to decrypt Discord token after update:', error);
+                updatedEvent.discordToken = null;
+                updatedEvent.discordGuildId = null;
+            }
+        }
+        
+        // Remove encrypted fields from the response
+        delete updatedEvent.discord_token;
+        delete updatedEvent.discord_guild_id;
+        
+        return updatedEvent;
     }
 
     public async setActiveEvent(guildId: string, eventId: number): Promise<void> {
