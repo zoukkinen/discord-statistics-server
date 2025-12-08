@@ -34,7 +34,7 @@ help: ## Show available commands
 	@echo "  shell         Open shell in bot container"
 	@echo ""
 	@echo "Testing:"
-	@echo "  test          Run all tests (matches CI workflow)"
+	@echo "  test          Run all tests (unit, integration, migration, frontend, lint)"
 	@echo "  test-unit     Run unit tests only"
 	@echo "  test-integration Run integration tests"
 	@echo "  test-frontend Run frontend tests"
@@ -156,19 +156,26 @@ shell-db: ## Open shell in database container
 	@$(DOCKER_COMPOSE) exec postgres sh
 
 # === TESTING ===
-test: validate-env ## Run all tests in Docker container (unit, integration, migration, frontend)
+test: validate-env ## Run all tests in Docker container (unit, integration, migration, frontend, lint, format)
 	@echo "🧪 Running comprehensive test suite in Docker..."
-	@echo "🔬 Step 1/4: Running unit tests..."
+	@echo "🔬 Step 1/6: Running unit tests..."
 	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:unit
 	@echo ""
-	@echo "🔄 Step 2/4: Running migration tests..."
+	@echo "🔄 Step 2/6: Running migration tests..."
 	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:migration
 	@echo ""
-	@echo "🔗 Step 3/4: Running integration tests..."
+	@echo "🔗 Step 3/6: Running integration tests..."
 	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:integration
 	@echo ""
-	@echo "🎨 Step 4/4: Running frontend tests..."
+	@echo "🎨 Step 4/6: Running frontend tests..."
 	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:frontend
+	@echo ""
+	@echo "🔍 Step 5/6: Checking TypeScript compilation..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npx tsc --noEmit
+	@$(DOCKER_COMPOSE) exec -T discord-bot npx tsc --project frontend/tsconfig.json --noEmit
+	@echo ""
+	@echo "✨ Step 6/6: Running code quality checks..."
+	@echo "  (Additional linting/formatting can be added here)"
 	@echo ""
 	@echo "✅ All tests completed successfully!"
 

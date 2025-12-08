@@ -1,4 +1,4 @@
-import { Component, createSignal, onMount, Show, createEffect } from "solid-js";
+import { Component, createSignal, onMount, Show } from "solid-js";
 import { statsStore } from "../stores/statsStore";
 import Header from "./Header";
 import Footer from "./Footer";
