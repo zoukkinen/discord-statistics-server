@@ -51,7 +51,6 @@ const EventManager: Component<EventManagerProps> = (props) => {
     type: "success" | "error";
   } | null>(null);
   const [isCreating, setIsCreating] = createSignal(false);
-  const [editingEvent, setEditingEvent] = createSignal<EventData | null>(null);
   const [statsModal, setStatsModal] = createSignal<EventStats | null>(null);
   const [formData, setFormData] = createSignal<CreateEventData>({
     name: "",
@@ -232,107 +231,6 @@ const EventManager: Component<EventManagerProps> = (props) => {
         setStatsModal(stats);
       } else {
         showMessage("Failed to load stats", "error");
-      }
-    } catch (error) {
-      showMessage(`Network error: ${(error as Error).message}`, "error");
-    }
-  };
-
-  const editEvent = (event: EventData) => {
-    setEditingEvent(event);
-    // Convert ISO strings to datetime-local format (YYYY-MM-DDTHH:MM)
-    const startDate = new Date(event.startDate).toISOString().slice(0, 16);
-    const endDate = new Date(event.endDate).toISOString().slice(0, 16);
-
-    setFormData({
-      name: event.name,
-      startDate: startDate,
-      endDate: endDate,
-      timezone: event.timezone,
-      description: event.description || "",
-      discordToken: "", // Don't pre-fill for security
-      discordGuildId: event.discordGuildId || "",
-    });
-
-    // Scroll to form
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    showMessage("Editing event - update the form and submit", "success");
-  };
-
-  const cancelEdit = () => {
-    setEditingEvent(null);
-    setFormData({
-      name: "",
-      startDate: "",
-      endDate: "",
-      timezone: "Europe/Helsinki",
-      description: "",
-      discordToken: "",
-      discordGuildId: "",
-    });
-    showMessage("Edit cancelled", "success");
-  };
-
-  const toggleHideEvent = async (
-    eventId: number,
-    currentlyHidden: boolean,
-    eventName: string
-  ) => {
-    const action = currentlyHidden ? "show" : "hide";
-    if (
-      !confirm(
-        `${
-          action === "hide" ? "Hide" : "Show"
-        } event "${eventName}"?\n\nHidden events won't appear in the public event list but can still be managed here.`
-      )
-    ) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/events/${eventId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isHidden: !currentlyHidden }),
-      });
-
-      if (response.ok) {
-        showMessage(
-          `Event "${eventName}" ${
-            action === "hide" ? "hidden" : "shown"
-          } successfully!`
-        );
-        refetchEvents();
-      } else {
-        const result = await response.json();
-        showMessage(result.error || `Failed to ${action} event`, "error");
-      }
-    } catch (error) {
-      showMessage(`Network error: ${(error as Error).message}`, "error");
-    }
-  };
-
-  const deleteEvent = async (eventId: number, eventName: string) => {
-    if (
-      !confirm(
-        `Delete event "${eventName}"?\n\n⚠️ This will permanently delete the event. All associated statistics will remain but won't be visible through this event.`
-      )
-    ) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/events/${eventId}`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        showMessage(`Event "${eventName}" deleted successfully!`);
-        refetchEvents();
-      } else {
-        const result = await response.json();
-        showMessage(result.error || "Failed to delete event", "error");
       }
     } catch (error) {
       showMessage(`Network error: ${(error as Error).message}`, "error");

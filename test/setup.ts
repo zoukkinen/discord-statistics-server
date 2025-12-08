@@ -2,7 +2,9 @@
 import { config } from "dotenv";
 
 // Load test environment variables
+// Try .env.test first (local development), fall back to .env (CI)
 config({ path: ".env.test" });
+config({ path: ".env" });
 
 // Override some environment variables for testing
 process.env.NODE_ENV = "test";

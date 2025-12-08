@@ -210,7 +210,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
   private async getCurrentEventId(): Promise<number> {
     if (!this.pool) throw new Error("Database not initialized");
 
-    const guildId = process.env.DISCORD_GUILD_ID || "";
+    const guildId = this.guildId || process.env.DISCORD_GUILD_ID || "";
 
     const client = await this.pool.connect();
     try {

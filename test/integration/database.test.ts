@@ -252,6 +252,9 @@ describe("PostgreSQLAdapter Integration Tests", () => {
       await adapter.recordMemberCount(110, 80, testEventId);
       await adapter.recordGameActivity("Game A", 15, testEventId);
       await adapter.recordGameActivity("Game B", 25, testEventId);
+      // Record more activities to ensure game_stats gets populated
+      await adapter.recordGameActivity("Game A", 12, testEventId);
+      await adapter.recordGameActivity("Game B", 18, testEventId);
     });
 
     it("should get member stats in date range", async () => {

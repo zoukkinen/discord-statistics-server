@@ -10,7 +10,9 @@ import { PostgreSQLAdapter } from "../src/database/PostgreSQLAdapter";
 import { CredentialEncryption } from "../src/utils/credentialEncryption";
 
 // Load environment variables
+// Try .env.test first (local development), fall back to .env (CI)
 config({ path: ".env.test" });
+config({ path: ".env" });
 
 interface TestResult {
   passed: boolean;

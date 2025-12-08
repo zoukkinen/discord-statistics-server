@@ -44,8 +44,8 @@ describe("configStore", () => {
 
       await configStore.loadConfig();
 
-      // Should keep default values on error
-      expect(configStore.eventName).toBe("Assembly Summer 2025");
+      // Should keep default values on error (from .env in test environment)
+      expect(configStore.eventName).toBe("Test Event");
     });
 
     it("should handle non-ok responses", async () => {
@@ -57,8 +57,8 @@ describe("configStore", () => {
 
       await configStore.loadConfig();
 
-      // Should keep default values on error
-      expect(configStore.eventName).toBe("Assembly Summer 2025");
+      // Should keep default values on error (from .env in test environment)
+      expect(configStore.eventName).toBe("Test Event");
     });
   });
 
