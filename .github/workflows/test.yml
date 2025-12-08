@@ -65,7 +65,8 @@ jobs:
 
       - name: Build project
         run: npm run build
-        env: NODE_ENV=test
+        env:
+          NODE_ENV: test
 
       - name: Run unit tests
         run: npm run test:unit
