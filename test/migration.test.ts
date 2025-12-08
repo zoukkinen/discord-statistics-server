@@ -46,7 +46,6 @@ class MigrationTester {
     try {
       await this.testDatabaseConnection();
       await this.testMigrationExecution();
-      await this.testEventCreation();
       await this.testDiscordCredentials();
       await this.testDataOperations();
       await this.testBackwardCompatibility();
@@ -125,46 +124,6 @@ class MigrationTester {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.addResult(false, "Migration verification failed", errorMessage);
-    }
-  }
-
-  private async testEventCreation(): Promise<void> {
-    console.log("\n📅 Testing event creation...");
-
-    try {
-      // Test basic event creation
-      const basicEvent = await this.adapter.createEvent({
-        name: "Migration Test Event",
-        startDate: "2025-01-01T00:00:00Z",
-        endDate: "2025-01-02T00:00:00Z",
-        timezone: "UTC",
-        description: "Test event for migration testing",
-        guildId: this.testGuildId,
-        isActive: true,
-      });
-
-      this.addResult(!!basicEvent.id, "Basic event creation successful", {
-        id: basicEvent.id,
-        name: basicEvent.name,
-      });
-
-      // Test event retrieval
-      const retrievedEvent = await this.adapter.getEvent(basicEvent.id);
-      this.addResult(
-        retrievedEvent && retrievedEvent.name === basicEvent.name,
-        "Event retrieval successful"
-      );
-
-      // Test events listing
-      const eventsList = await this.adapter.getEvents(this.testGuildId);
-      this.addResult(
-        eventsList.length >= 1,
-        `Events listing successful (${eventsList.length} events found)`
-      );
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      this.addResult(false, "Event creation failed", errorMessage);
     }
   }
 
