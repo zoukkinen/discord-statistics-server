@@ -61,9 +61,16 @@ describe("CredentialEncryption", () => {
     });
 
     it("should throw error when decrypting invalid encrypted data", () => {
-      expect(() =>
-        CredentialEncryption.decrypt("invalid-encrypted-data")
-      ).toThrow();
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      try {
+        expect(() =>
+          CredentialEncryption.decrypt("invalid-encrypted-data")
+        ).toThrow();
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
     });
 
     it("should handle encryption without environment key (development mode)", () => {

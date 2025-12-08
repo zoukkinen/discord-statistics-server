@@ -1,4 +1,3 @@
-#!/usr/bin/env ts-node
 /**
  * Comprehensive migration test for the multi-event system
  * This test verifies that database migrations work correctly and

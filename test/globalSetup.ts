@@ -5,13 +5,16 @@ export default async function globalSetup() {
   console.log("🔧 Setting up test environment...");
 
   // Create test database if it doesn't exist
-  const connectionString =
-    process.env.DATABASE_URL ||
-    `postgresql://${process.env.DB_USER || "postgres"}:${
-      process.env.DB_PASSWORD || ""
-    }@${process.env.DB_HOST || "localhost"}:${
-      process.env.DB_PORT || "5432"
-    }/postgres`;
+  // Use DATABASE_URL if available, otherwise construct from individual vars
+  let connectionString = process.env.DATABASE_URL;
+
+  if (!connectionString) {
+    const dbUser = process.env.DB_USER || "postgres";
+    const dbPassword = process.env.DB_PASSWORD || "postgres";
+    const dbHost = process.env.DB_HOST || "localhost";
+    const dbPort = process.env.DB_PORT || "5432";
+    connectionString = `postgresql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/postgres`;
+  }
 
   const client = new Client({ connectionString });
 

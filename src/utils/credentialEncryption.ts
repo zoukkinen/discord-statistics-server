@@ -81,10 +81,10 @@ export class CredentialEncryption {
       decipher.setAuthTag(tag);
       decipher.setAAD(Buffer.from("discord-token", "utf8"));
 
-      let decrypted = decipher.update(encrypted, undefined, "utf8");
-      decrypted += decipher.final("utf8");
+      let decrypted = decipher.update(encrypted);
+      decrypted = Buffer.concat([decrypted, decipher.final()]);
 
-      return decrypted;
+      return decrypted.toString("utf8");
     } catch (error) {
       console.error("❌ Failed to decrypt Discord token:", error);
       throw new Error(
