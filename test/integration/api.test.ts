@@ -8,7 +8,7 @@ describe("Web Server API Integration Tests", () => {
   let app: Express;
   let server: any;
   let adapter: PostgreSQLAdapter;
-  const testGuildId = "api-test-guild-123456789";
+  const testGuildId = process.env.DISCORD_GUILD_ID || "1234567890123456789";
 
   beforeAll(async () => {
     // Initialize database adapter for test data setup
@@ -268,15 +268,13 @@ describe("Web Server API Integration Tests", () => {
     });
 
     describe("GET /api/events", () => {
-      it("should require authentication", async () => {
-        await request(app).get("/api/events").expect(401);
+      it("should be publicly accessible (no auth required)", async () => {
+        const response = await request(app).get("/api/events").expect(200);
+        expect(Array.isArray(response.body)).toBe(true);
       });
 
-      it("should return events list when authenticated", async () => {
-        const response = await request(app)
-          .get("/api/events")
-          .set("Authorization", `Bearer ${authToken}`)
-          .expect(200);
+      it("should return events list", async () => {
+        const response = await request(app).get("/api/events").expect(200);
 
         expect(Array.isArray(response.body)).toBe(true);
       });

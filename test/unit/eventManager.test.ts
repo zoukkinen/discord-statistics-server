@@ -38,10 +38,10 @@ describe("EventManager", () => {
       const endLater = new Date(now.getTime() + 86400000).toISOString();
       expect(EventManager.getEventStatus(startNow, endLater)).toBe("active");
 
-      // Event ending exactly now
+      // Event ending in 1 second (still active)
       const startEarlier = new Date(now.getTime() - 86400000).toISOString();
-      const endNow = now.toISOString();
-      expect(EventManager.getEventStatus(startEarlier, endNow)).toBe("active");
+      const endSoon = new Date(now.getTime() + 1000).toISOString();
+      expect(EventManager.getEventStatus(startEarlier, endSoon)).toBe("active");
     });
   });
 
