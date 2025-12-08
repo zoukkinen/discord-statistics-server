@@ -236,10 +236,15 @@ describe("PostgreSQLAdapter Integration Tests", () => {
     let testEventId: number;
 
     beforeEach(async () => {
+      // Create event with date range that covers NOW (since test data is recorded with current timestamps)
+      const now = new Date();
+      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
       const event = await adapter.createEvent({
         name: "Retrieval Test Event",
-        startDate: "2025-01-01T00:00:00Z",
-        endDate: "2025-01-02T00:00:00Z",
+        startDate: yesterday.toISOString(),
+        endDate: tomorrow.toISOString(),
         timezone: "UTC",
         description: "Event for retrieval testing",
         guildId: testGuildId,
@@ -255,6 +260,12 @@ describe("PostgreSQLAdapter Integration Tests", () => {
       // Record more activities to ensure game_stats gets populated
       await adapter.recordGameActivity("Game A", 12, testEventId);
       await adapter.recordGameActivity("Game B", 18, testEventId);
+
+      // Record game sessions for statistics (required for getEventStats to count unique games)
+      await adapter.recordGameSession("user-1", "Game A", "start", testEventId);
+      await adapter.recordGameSession("user-1", "Game A", "end", testEventId);
+      await adapter.recordGameSession("user-2", "Game B", "start", testEventId);
+      await adapter.recordGameSession("user-2", "Game B", "end", testEventId);
     });
 
     it("should get member stats in date range", async () => {

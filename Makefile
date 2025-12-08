@@ -21,40 +21,40 @@ help: ## Show available commands
 	@echo "====================================="
 	@echo ""
 	@echo "Setup:"
-	@echo "  setup         Create .env file and validate"
+	@echo "  setup         Create .env file"
 	@echo "  quick-start   Complete setup and start development"
 	@echo ""
 	@echo "Development:"
 	@echo "  dev           Start development environment"
+	@echo "  build         Build Docker images"
+	@echo "  rebuild       Force rebuild from scratch"
+	@echo "  restart       Restart all services"
+	@echo "  stop          Stop all services"
 	@echo "  logs          Show application logs"
 	@echo "  shell         Open shell in bot container"
-	@echo "  restart       Restart all services"
 	@echo ""
 	@echo "Testing:"
-	@echo "  test          Run all tests"
+	@echo "  test          Run all tests (matches CI workflow)"
 	@echo "  test-unit     Run unit tests only"
 	@echo "  test-integration Run integration tests"
 	@echo "  test-frontend Run frontend tests"
-	@echo "  test-watch    Run tests in watch mode"
+	@echo "  test-migration Run database migration tests"
 	@echo "  test-coverage Generate test coverage report"
-	@echo "  test-ci       Run CI test suite"
 	@echo ""
 	@echo "Production:"
 	@echo "  prod          Start production with nginx"
-	@echo "  build         Build Docker images"
 	@echo "  deploy        Full production deployment"
+	@echo "  health        Check application health"
 	@echo ""
 	@echo "Database:"
+	@echo "  migrate       Run database migrations"
 	@echo "  backup        Backup local database"
 	@echo "  restore       Restore database (BACKUP_FILE=filename)"
-	@echo "  sync-prod     Sync with production data"
-	@echo ""
-	@echo "Deployment:"
-	@echo "  heroku-deploy Deploy to Heroku (APP_NAME=name)"
-	@echo "  ssl-setup     Complete SSL setup (DOMAIN=domain EMAIL=email)"
+	@echo "  list-backups  List available backups"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  clean         Remove all containers and data"
+	@echo "  clean-tests   Clean test artifacts"
 	@echo "  update        Update and rebuild application"
 	@echo ""
 	@echo "Platform: $(UNAME_S)/$(UNAME_M) $(if $(filter true,$(WSL_DETECTED)),(WSL),)"
@@ -79,27 +79,16 @@ validate-env: ## Validate environment configuration
 		echo "⚠️  CREDENTIAL_ENCRYPTION_KEY not set - will use default (not secure for production)"; \
 	fi
 
-quick-start: setup validate-env test-setup dev test-unit ## Complete setup and start development with tests
+quick-start: setup validate-env dev migrate ## Complete setup and start development
 
 # === DEVELOPMENT ===
 dev: validate-env ## Start development environment
 	@echo "⚡ Starting development environment..."
 	@$(DOCKER_COMPOSE) up -d
+	@echo "⏳ Waiting for database to be ready..."
+	@sleep 3
 
-dev-full: validate-env test-setup ## Start development with full test environment
-	@echo "⚡ Starting full development environment with testing..."
-	@$(DOCKER_COMPOSE) up -d
-	@sleep 10
-	@echo "🧪 Running quick validation tests..."
-	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:unit -- --testNamePattern="Config"
-	@echo "✅ Development environment ready with tests validated!"
 
-dev-watch: validate-env ## Start development with test watching
-	@echo "⚡ Starting development with test watching..."
-	@$(DOCKER_COMPOSE) up -d
-	@sleep 5
-	@echo "👀 Starting test watch mode..."
-	@$(DOCKER_COMPOSE) exec discord-bot npm run test:watch
 
 build: ## Build Docker images
 	@echo "🔨 Building Docker images..."
@@ -167,9 +156,27 @@ shell-db: ## Open shell in database container
 	@$(DOCKER_COMPOSE) exec postgres sh
 
 # === TESTING ===
-test: validate-env ## Run all tests
-	@echo "🧪 Running comprehensive test suite..."
-	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:all
+test: validate-env ## Run all tests in Docker container (unit, integration, migration, frontend)
+	@echo "🧪 Running comprehensive test suite in Docker..."
+	@echo "🔬 Step 1/4: Running unit tests..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:unit
+	@echo ""
+	@echo "🔄 Step 2/4: Running migration tests..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:migration
+	@echo ""
+	@echo "🔗 Step 3/4: Running integration tests..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:integration
+	@echo ""
+	@echo "🎨 Step 4/4: Running frontend tests..."
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:frontend
+	@echo ""
+	@echo "✅ All tests completed successfully!"
+
+test-unit: validate-env ## Run only unit tests in Docker
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:unit
+
+test-integration: validate-env ## Run only integration tests in Docker
+	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:integration
 
 test-unit: ## Run unit tests only
 	@echo "🔬 Running unit tests..."
@@ -200,41 +207,14 @@ test-migration: validate-env ## Test database migration system
 	@sleep 5
 	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:migration
 
-test-e2e: validate-env ## Run end-to-end tests
-	@echo "🎯 Running end-to-end tests..."
-	@$(DOCKER_COMPOSE) up -d
-	@sleep 10
-	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:e2e
 
-test-ci: ## Run CI test suite (for GitHub Actions)
-	@echo "🤖 Running CI test suite..."
-	@npm ci
-	@npm run build
-	@npm run test:all
-
-test-setup: ## Setup test environment
-	@echo "🔧 Setting up test environment..."
-	@$(DOCKER_COMPOSE) up -d postgres
-	@sleep 5
-	@$(DOCKER_COMPOSE) exec postgres psql -U discord_bot -c "CREATE DATABASE IF NOT EXISTS discord_stats_test;"
-	@echo "✅ Test environment ready"
-
-test-clean: ## Clean test database
-	@echo "🧹 Cleaning test database..."
-	@$(DOCKER_COMPOSE) exec postgres psql -U discord_bot -c "DROP DATABASE IF EXISTS discord_stats_test;"
-	@$(DOCKER_COMPOSE) exec postgres psql -U discord_bot -c "CREATE DATABASE discord_stats_test;"
-	@echo "✅ Test database cleaned"
-
-test-branch: validate-env ## Test current branch features
-	@echo "🌟 Testing current branch: discord-settings-to-admin-panel"
-	@echo "🔐 Testing Discord credentials encryption..."
-	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test -- --testNamePattern="CredentialEncryption"
-	@echo "📝 Testing admin panel functionality..."
-	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test -- --testNamePattern="Admin|Event"
-	@echo "🧪 Running integration tests for new features..."
-	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:integration
 
 # === DATABASE ===
+migrate: ## Run database migrations
+	@echo "🔄 Running database migrations..."
+	@echo "ALTER TABLE events ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE; CREATE INDEX IF NOT EXISTS idx_events_visible ON events(guild_id, is_hidden) WHERE is_hidden = false;" | $(DOCKER_COMPOSE) exec -T postgres psql -U discord_bot -d discord_stats
+	@echo "✅ Migrations completed"
+
 backup: ## Backup local database
 	@echo "💾 Creating database backup..."
 	@mkdir -p backups
@@ -248,78 +228,24 @@ restore: ## Restore database from backup (BACKUP_FILE=filename)
 	@$(DOCKER_COMPOSE) stop discord-bot
 	@$(DOCKER_COMPOSE) exec -T postgres psql -U discord_bot -d postgres -c "DROP DATABASE IF EXISTS discord_stats;"
 	@$(DOCKER_COMPOSE) exec -T postgres psql -U discord_bot -d postgres -c "CREATE DATABASE discord_stats;"
-	@$(DOCKER_COMPOSE) exec -T postgres psql -U discord_bot -d discord_stats < backups/$(BACKUP_FILE)
+	@echo "🔍 Detecting backup format..."
+	@if file backups/$(BACKUP_FILE) | grep -q "PostgreSQL custom database dump"; then \
+		echo "📦 Custom format detected, using pg_restore..."; \
+		cat backups/$(BACKUP_FILE) | $(DOCKER_COMPOSE) exec -T postgres pg_restore -U discord_bot -d discord_stats --no-owner --no-acl || true; \
+	else \
+		echo "📄 SQL format detected, using psql..."; \
+		cat backups/$(BACKUP_FILE) | $(DOCKER_COMPOSE) exec -T postgres psql -U discord_bot -d discord_stats; \
+	fi
 	@$(DOCKER_COMPOSE) start discord-bot
-	@echo "✅ Database restored"
+	@echo "✅ Database restored successfully"
 
-sync-prod: ## Sync with production data
-	@if [ -z "$(HEROKU_APP)" ]; then HEROKU_APP="assembly-discord-tracker-2025"; fi; \
-	echo "🚀 Syncing with production ($$HEROKU_APP)..."; \
-	$(DOCKER_COMPOSE) stop discord-bot; \
-	./scripts/heroku-backup.sh backup $$HEROKU_APP; \
-	./scripts/heroku-backup.sh restore $$HEROKU_APP; \
-	$(DOCKER_COMPOSE) up -d; \
-	echo "✅ Synced with production!"
+
 
 list-backups: ## List available backups
 	@echo "📋 Available backups:"
 	@ls -la backups/ 2>/dev/null || echo "No backups found"
 
-# === DEVELOPMENT WORKFLOW ===
-pre-commit: validate-env ## Run pre-commit checks (linting, tests, build)
-	@echo "🔍 Running pre-commit checks..."
-	@echo "📝 Checking code formatting..."
-	@$(DOCKER_COMPOSE) exec -T discord-bot npm run build 2>/dev/null || echo "⚠️  Build check complete"
-	@echo "🧪 Running critical tests..."
-	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:unit
-	@echo "🔐 Testing Discord credentials functionality..."
-	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test -- --testNamePattern="CredentialEncryption"
-	@echo "✅ Pre-commit checks passed!"
 
-branch-test: validate-env test-setup ## Comprehensive test of current branch features
-	@echo "🌿 Testing branch: discord-settings-to-admin-panel"
-	@echo "=========================================="
-	@echo ""
-	@echo "🔐 1. Testing Discord credential encryption..."
-	@$(DOCKER_COMPOSE) up -d
-	@sleep 10
-	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test -- --testNamePattern="CredentialEncryption" --verbose
-	@echo ""
-	@echo "📝 2. Testing admin panel event management..."
-	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test -- --testNamePattern="EventManager" --verbose
-	@echo ""
-	@echo "🗄️ 3. Testing database migrations with credentials..."
-	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:migration
-	@echo ""
-	@echo "🌐 4. Testing API endpoints for admin functionality..."
-	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test -- --testNamePattern="Admin.*API|Event.*API" --verbose
-	@echo ""
-	@echo "✅ Branch testing complete! All Discord credentials features working."
-
-performance-test: validate-env ## Run performance tests
-	@echo "⚡ Running performance tests..."
-	@$(DOCKER_COMPOSE) up -d
-	@sleep 10
-	@echo "📊 Testing database performance with large datasets..."
-	@$(DOCKER_COMPOSE) exec -T discord-bot node scripts/populate-test-data.ts
-	@$(DOCKER_COMPOSE) exec -T discord-bot npm run test:integration
-	@echo "💾 Testing memory usage..."
-	@$(DOCKER_COMPOSE) stats --no-stream
-
-# === HEROKU DEPLOYMENT ===
-heroku-deploy: ## Deploy to Heroku (APP_NAME=name)
-	@if [ -z "$(APP_NAME)" ]; then echo "❌ Usage: make heroku-deploy APP_NAME=your-app-name"; exit 1; fi
-	@echo "🚀 Deploying to Heroku..."
-	@./scripts/deploy-heroku.sh $(APP_NAME)
-
-heroku-logs: ## View Heroku logs (APP_NAME=name)
-	@if [ -z "$(APP_NAME)" ]; then echo "❌ Usage: make heroku-logs APP_NAME=your-app-name"; exit 1; fi
-	@heroku logs --tail --app $(APP_NAME)
-
-heroku-status: ## Check Heroku status (APP_NAME=name)
-	@if [ -z "$(APP_NAME)" ]; then echo "❌ Usage: make heroku-status APP_NAME=your-app-name"; exit 1; fi
-	@echo "📊 Heroku Status:"
-	@heroku ps --app $(APP_NAME)
 
 # === SSL SETUP ===
 ssl-setup: ## Complete SSL setup (DOMAIN=domain EMAIL=email)

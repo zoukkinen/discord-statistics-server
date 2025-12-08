@@ -36,32 +36,20 @@ const App: Component = () => {
 
   const updateRoute = () => {
     const path = window.location.pathname;
-    console.log("updateRoute: Current path is:", path);
     if (path === "/admin") {
       setCurrentRoute("admin");
       setCurrentEventId(null);
-      console.log("updateRoute: Set route to admin");
     } else if (path.startsWith("/events/")) {
       setCurrentRoute("event");
       const eventIdMatch = path.match(/\/events\/(\d+)/);
       if (eventIdMatch) {
         const eventId = parseInt(eventIdMatch[1]);
         setCurrentEventId(eventId);
-        console.log("updateRoute: Set route to event with ID:", eventId);
-      } else {
-        console.log("updateRoute: Event path but no ID match");
       }
     } else {
       setCurrentRoute("dashboard");
       setCurrentEventId(null);
-      console.log("updateRoute: Set route to dashboard");
     }
-    console.log(
-      "updateRoute: Final route state - route:",
-      currentRoute(),
-      "eventId:",
-      currentEventId()
-    );
   };
 
   onMount(async () => {
@@ -136,10 +124,6 @@ const App: Component = () => {
     if ("serviceWorker" in navigator) {
       try {
         const registration = await navigator.serviceWorker.register("/sw.js");
-        console.log(
-          "Service Worker registered successfully:",
-          registration.scope
-        );
 
         // Check for updates immediately
         registration.update();
@@ -159,8 +143,6 @@ const App: Component = () => {
                 navigator.serviceWorker.controller
               ) {
                 // New content is available, force update
-                console.log("New service worker installed, updating...");
-
                 // Send message to service worker to skip waiting
                 newWorker.postMessage({ type: "SKIP_WAITING" });
 
@@ -175,11 +157,10 @@ const App: Component = () => {
 
         // Handle service worker controller change
         navigator.serviceWorker.addEventListener("controllerchange", () => {
-          console.log("Service Worker controller changed, reloading...");
           window.location.reload();
         });
       } catch (error) {
-        console.log("Service Worker registration failed:", error);
+        console.error("Service Worker registration failed:", error);
       }
     }
   });
@@ -194,12 +175,6 @@ const App: Component = () => {
     }
   });
 
-  // Render admin interface or dashboard based on route
-  console.log("Rendering with route:", currentRoute());
-  console.log("Current pathname:", window.location.pathname);
-  console.log("Is admin path?", window.location.pathname === "/admin");
-  console.log("Is admin authenticated?", isAdminAuthenticated());
-
   // Define admin page component with reactivity
   const AdminPage = () => (
     <Show
@@ -207,7 +182,6 @@ const App: Component = () => {
       fallback={
         <AdminAuth
           onAuthenticated={() => {
-            console.log("Authentication successful, setting state to true");
             setIsAdminAuthenticated(true);
           }}
         />
@@ -215,7 +189,6 @@ const App: Component = () => {
     >
       <EventManager
         onLogout={() => {
-          console.log("Logging out, setting state to false");
           localStorage.removeItem("adminToken");
           setIsAdminAuthenticated(false);
         }}
@@ -225,7 +198,6 @@ const App: Component = () => {
 
   // Render admin interface, event detail, or dashboard based on route
   if (window.location.pathname === "/admin") {
-    console.log("Should render admin with auth check");
     return <AdminPage />;
   }
 

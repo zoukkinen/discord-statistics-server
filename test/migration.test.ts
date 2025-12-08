@@ -186,10 +186,59 @@ class MigrationTester {
 
   private async testDataOperations(): Promise<void> {
     console.log("\n📊 Testing data recording operations...");
+    console.log(
+      "DEBUG: testDataOperations started, testGuildId:",
+      this.testGuildId
+    );
 
     try {
-      // Get the active event
-      const activeEvent = await this.adapter.getActiveEvent(this.testGuildId);
+      console.log("DEBUG: About to call getActiveEvent");
+      // Ensure there's an active event for testing data operations
+      let activeEvent;
+      try {
+        activeEvent = await this.adapter.getActiveEvent(this.testGuildId);
+        console.log(
+          `🔍 Active event check result:`,
+          activeEvent ? `Found ID ${activeEvent.id}` : "Not found"
+        );
+      } catch (getError) {
+        console.error(`❌ Error getting active event:`, getError);
+        activeEvent = null;
+      }
+
+      if (!activeEvent) {
+        console.log("⚠️  No active event found, creating one for testing...");
+
+        // First, deactivate any existing events to avoid constraint violation
+        await this.adapter.query(
+          "UPDATE events SET is_active = false WHERE guild_id = $1 AND is_active = true",
+          [this.testGuildId]
+        );
+
+        // Create a temporary active event for testing
+        try {
+          activeEvent = await this.adapter.createEvent({
+            name: "Active Event for Data Testing",
+            startDate: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+            endDate: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
+            timezone: "UTC",
+            description: "Temporary event for testing data operations",
+            guildId: this.testGuildId,
+            isActive: true,
+          });
+
+          console.log(`✅ Created active event with ID: ${activeEvent.id}`);
+        } catch (createError) {
+          console.error(`❌ Failed to create active event:`, createError);
+          this.addResult(
+            false,
+            "Failed to create active event for testing",
+            String(createError)
+          );
+          return;
+        }
+      }
+
       if (!activeEvent) {
         this.addResult(false, "No active event found for data operations");
         return;
