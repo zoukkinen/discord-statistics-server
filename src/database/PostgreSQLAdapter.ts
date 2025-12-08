@@ -392,15 +392,21 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     endDate: string,
     eventId?: number
   ): Promise<GameSession[]> {
-    const result = await this.query(
-      `
+    let query = `
             SELECT id, user_id, game_name, start_time, end_time, duration_minutes
             FROM game_sessions
             WHERE start_time BETWEEN $1 AND $2
-            ORDER BY start_time ASC
-        `,
-      [startDate, endDate]
-    );
+        `;
+    let params: any[] = [startDate, endDate];
+
+    if (eventId) {
+      query += ` AND event_id = $3`;
+      params.push(eventId);
+    }
+
+    query += ` ORDER BY start_time ASC`;
+
+    const result = await this.query(query, params);
 
     return result.rows.map((row: any) => ({
       id: row.id,
@@ -428,6 +434,15 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
   > {
     if (!this.client) throw new Error("Database not initialized");
 
+    // Build query with optional event_id filter to ensure data isolation between events/servers
+    const whereClause = eventId
+      ? "WHERE start_time BETWEEN $1 AND $2 AND event_id = $4"
+      : "WHERE start_time BETWEEN $1 AND $2";
+
+    const params = eventId
+      ? [startDate, endDate, limit, eventId]
+      : [startDate, endDate, limit];
+
     const result = await this.client.query(
       `
             SELECT 
@@ -449,12 +464,12 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
                 )::numeric, 2), 0) as avg_minutes,
                 COUNT(DISTINCT user_id) as unique_players
             FROM game_sessions
-            WHERE start_time BETWEEN $1 AND $2
+            ${whereClause}
             GROUP BY game_name
             ORDER BY total_minutes DESC, total_sessions DESC
             LIMIT $3
         `,
-      [startDate, endDate, limit]
+      params
     );
 
     return result.rows.map((row) => ({
@@ -942,6 +957,10 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       processedUpdates.is_active = processedUpdates.isActive;
       delete processedUpdates.isActive;
     }
+    if (processedUpdates.isHidden !== undefined) {
+      processedUpdates.is_hidden = processedUpdates.isHidden;
+      delete processedUpdates.isHidden;
+    }
 
     for (const [key, value] of Object.entries(processedUpdates)) {
       fields.push(`${key} = $${paramIndex}`);
@@ -1016,6 +1035,41 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     );
   }
 
+  public async deleteEvent(eventId: number): Promise<boolean> {
+    if (!this.client) throw new Error("Database not initialized");
+
+    try {
+      // Check if the event exists and if it's currently active
+      const eventResult = await this.client.query(
+        `SELECT * FROM events WHERE id = $1`,
+        [eventId]
+      );
+
+      if (eventResult.rows.length === 0) {
+        return false;
+      }
+
+      const event = eventResult.rows[0];
+
+      // Prevent deletion of active events
+      if (event.is_active) {
+        throw new Error(
+          "Cannot delete an active event. Deactivate it first by activating another event."
+        );
+      }
+
+      // Delete the event - CASCADE will handle related data deletion
+      // (member_stats, game_stats, game_sessions with event_id references)
+      await this.client.query(`DELETE FROM events WHERE id = $1`, [eventId]);
+
+      console.log(`🗑️  Event deleted: "${event.name}" (ID: ${eventId})`);
+      return true;
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      throw error;
+    }
+  }
+
   public async getEventStats(eventId: number): Promise<any> {
     if (!this.client) throw new Error("Database not initialized");
 
@@ -1029,6 +1083,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     const event = eventResult.rows[0];
 
     // Get game session stats (optimized with single table query)
+    // Filter by both event_id AND date range to ensure accuracy
     const gameStatsResult = await this.client.query(
       `
             SELECT 
@@ -1037,8 +1092,10 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
                 COALESCE(SUM(duration_minutes), 0) as total_minutes
             FROM game_sessions
             WHERE event_id = $1
+              AND start_time >= $2::timestamptz
+              AND start_time <= $3::timestamptz
         `,
-      [eventId]
+      [eventId, event.start_date, event.end_date]
     );
 
     const gameStats = gameStatsResult.rows[0];
@@ -1049,8 +1106,10 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             SELECT COUNT(DISTINCT game_name) as unique_games_alt
             FROM game_stats
             WHERE event_id = $1
+              AND timestamp >= $2::timestamptz
+              AND timestamp <= $3::timestamptz
         `,
-      [eventId]
+      [eventId, event.start_date, event.end_date]
     );
 
     // Use the higher count between game_sessions and game_stats
@@ -1067,6 +1126,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       `
             SELECT 
                 COALESCE(MAX(online_members), 0) as peak_online_members,
+                COALESCE(MAX(total_members), 0) as peak_total_members,
                 COALESCE(AVG(online_members), 0) as avg_online_members
             FROM member_stats
             WHERE event_id = $1
@@ -1076,8 +1136,54 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
 
     const memberStats = memberStatsResult.rows[0];
 
-    // Get top game information (optimized query)
-    // Check both game_sessions and game_stats
+    // Calculate event duration from member_stats timestamps, constrained by event dates
+    // This ensures we only count time within the event's actual start/end window
+    const durationResult = await this.client.query(
+      `
+            SELECT 
+                EXTRACT(EPOCH FROM (
+                    LEAST(MAX(timestamp), $2::timestamptz) - 
+                    GREATEST(MIN(timestamp), $3::timestamptz)
+                )) / 3600 as duration_hours
+            FROM member_stats
+            WHERE event_id = $1
+              AND timestamp >= $3::timestamptz
+              AND timestamp <= $2::timestamptz
+        `,
+      [eventId, event.end_date, event.start_date]
+    );
+    const eventDurationHours = Math.round(
+      parseFloat(durationResult.rows[0]?.duration_hours) || 0
+    );
+
+    // Get ALL top games information (not just top 1)
+    // Filter by date range to ensure we only count games played during the event
+    const topGamesResult = await this.client.query(
+      `
+            SELECT 
+                game_name,
+                COUNT(DISTINCT user_id) as unique_players,
+                COUNT(id) as total_sessions,
+                COALESCE(SUM(duration_minutes), 0) as total_minutes
+            FROM game_sessions
+            WHERE event_id = $1
+              AND start_time >= $2::timestamptz
+              AND start_time <= $3::timestamptz
+            GROUP BY game_name
+            ORDER BY total_minutes DESC, total_sessions DESC
+        `,
+      [eventId, event.start_date, event.end_date]
+    );
+
+    // Transform to match the frontend format
+    const topGames = topGamesResult.rows.map((row) => ({
+      game_name: row.game_name,
+      total_minutes: parseFloat(row.total_minutes) || 0,
+      unique_players: parseInt(row.unique_players) || 0,
+      total_sessions: parseInt(row.total_sessions) || 0,
+    }));
+
+    // Get top game information (optimized query) - keep for backward compatibility
     const topGameResult = await this.client.query(
       `
             SELECT 
@@ -1086,11 +1192,13 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
                 COUNT(id) as session_count
             FROM game_sessions
             WHERE event_id = $1
+              AND start_time >= $2::timestamptz
+              AND start_time <= $3::timestamptz
             GROUP BY game_name
             ORDER BY session_count DESC, total_players DESC
             LIMIT 1
         `,
-      [eventId]
+      [eventId, event.start_date, event.end_date]
     );
 
     // Get peak players for top game (if exists)
@@ -1101,9 +1209,12 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
         `
                 SELECT COALESCE(MAX(player_count), 0) as peak_players
                 FROM game_stats
-                WHERE event_id = $1 AND game_name = $2
+                WHERE event_id = $1 
+                  AND game_name = $2
+                  AND timestamp >= $3::timestamptz
+                  AND timestamp <= $4::timestamptz
             `,
-        [eventId, topGameName]
+        [eventId, topGameName, event.start_date, event.end_date]
       );
 
       topGame = {
@@ -1120,10 +1231,13 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       totalUniqueGames,
       totalGameSessions: parseInt(gameStats.game_session_count) || 0,
       peakOnlineMembers: parseInt(memberStats.peak_online_members) || 0,
+      peakTotalMembers: parseInt(memberStats.peak_total_members) || 0,
       averageOnlineMembers: parseFloat(memberStats.avg_online_members) || 0,
       totalActiveHours: Math.round(
         (parseFloat(gameStats.total_minutes) || 0) / 60
       ),
+      eventDurationHours,
+      topGames,
       topGame,
     };
   }
@@ -1141,6 +1255,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
                 e.end_date,
                 e.timezone,
                 e.is_active,
+                e.is_hidden,
                 e.created_at,
                 COUNT(DISTINCT gss.user_id) as unique_players,
                 COUNT(DISTINCT gss.game_name) as unique_games,
@@ -1149,7 +1264,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             FROM events e
             LEFT JOIN game_sessions gss ON gss.event_id = e.id
             WHERE e.guild_id = $1
-            GROUP BY e.id, e.name, e.description, e.start_date, e.end_date, e.timezone, e.is_active, e.created_at
+            GROUP BY e.id, e.name, e.description, e.start_date, e.end_date, e.timezone, e.is_active, e.is_hidden, e.created_at
             ORDER BY e.created_at DESC
         `,
       [guildId]

@@ -54,6 +54,23 @@ export class WebServer {
     }
   }
 
+  private verifyToken(token: string): boolean {
+    try {
+      // Decode base64 token and check format
+      const decoded = Buffer.from(token, "base64").toString("utf-8");
+      const [prefix, timestamp] = decoded.split(":");
+
+      // Verify token format and that it's not expired (1 hour = 3600000 ms)
+      if (prefix === "admin" && timestamp) {
+        const tokenAge = Date.now() - parseInt(timestamp);
+        return tokenAge < 3600000; // 1 hour expiry
+      }
+      return false;
+    } catch (error) {
+      return false;
+    }
+  }
+
   private authenticateAdmin(req: any, res: any, next: any): void {
     const authHeader = req.headers.authorization;
 
@@ -97,6 +114,7 @@ export class WebServer {
       description: event.description,
       guildId: event.guild_id,
       isActive: event.is_active,
+      isHidden: event.is_hidden || false,
       createdAt: event.created_at,
       updatedAt: event.updated_at,
     };
@@ -111,6 +129,7 @@ export class WebServer {
       endDate: summary.end_date,
       timezone: summary.timezone,
       isActive: summary.is_active,
+      isHidden: summary.is_hidden || false,
       createdAt: summary.created_at,
       uniquePlayers: summary.unique_players,
       uniqueGames: summary.unique_games,
@@ -325,11 +344,16 @@ export class WebServer {
         const end = req.query.end as string;
 
         if (start && end) {
-          // Use date range query
+          // Use date range query - no event_id filter for historical queries
           const history = await this.database.getMemberStatsInRange(start, end);
           res.json(history);
         } else {
-          // Fallback to hours-based query
+          // Fallback to active event for live queries
+          const guildId = process.env.DISCORD_GUILD_ID;
+          const activeEvent = guildId
+            ? await this.database.getActiveEvent(guildId)
+            : null;
+
           const hours = parseInt(req.query.hours as string) || 24;
           const endDate = new Date().toISOString();
           const startDate = new Date(
@@ -337,7 +361,8 @@ export class WebServer {
           ).toISOString();
           const history = await this.database.getMemberStatsInRange(
             startDate,
-            endDate
+            endDate,
+            activeEvent?.id
           );
           res.json(history);
         }
@@ -349,6 +374,11 @@ export class WebServer {
 
     this.app.get("/api/game-history", async (req, res) => {
       try {
+        const guildId = process.env.DISCORD_GUILD_ID;
+        const activeEvent = guildId
+          ? await this.database.getActiveEvent(guildId)
+          : null;
+
         const hours = parseInt(req.query.hours as string) || 24;
         const endDate = new Date().toISOString();
         const startDate = new Date(
@@ -356,7 +386,8 @@ export class WebServer {
         ).toISOString();
         const history = await this.database.getGameStatsInRange(
           startDate,
-          endDate
+          endDate,
+          activeEvent?.id
         );
         res.json(history);
       } catch (error) {
@@ -391,13 +422,14 @@ export class WebServer {
           const activeEvent = await this.database.getActiveEvent(guildId);
 
           if (activeEvent) {
-            // Use active event date range
+            // Use active event date range and event ID to isolate data
             const eventStart = activeEvent.startDate;
             const eventEnd = activeEvent.endDate;
             const topGames = await this.database.getTopGamesInRange(
               eventStart,
               eventEnd,
-              limit
+              limit,
+              activeEvent.id
             );
             res.json(topGames);
           } else {
@@ -452,7 +484,7 @@ export class WebServer {
 
     // Event Management API Endpoints
 
-    // Get all events (public read access)
+    // Get all events (public read access, filters hidden events for non-admin)
     this.app.get("/api/events", async (req, res) => {
       try {
         const guildId = process.env.DISCORD_GUILD_ID;
@@ -463,7 +495,17 @@ export class WebServer {
         }
 
         const events = await this.database.getEvents(guildId);
-        const transformedEvents = events.map((event) =>
+
+        // Check if request is from admin
+        const token = req.headers.authorization?.replace("Bearer ", "");
+        const isAdmin = token && this.verifyToken(token);
+
+        // Filter out hidden events for non-admin users
+        const filteredEvents = isAdmin
+          ? events
+          : events.filter((event) => !event.isHidden);
+
+        const transformedEvents = filteredEvents.map((event) =>
           this.transformEventToCamelCase(event)
         );
         res.json(transformedEvents);
@@ -506,7 +548,17 @@ export class WebServer {
         }
 
         const summaries = await this.database.getEventSummaries(guildId);
-        const transformedSummaries = summaries.map((summary) =>
+
+        // Check if request is from admin
+        const token = req.headers.authorization?.replace("Bearer ", "");
+        const isAdmin = token && this.verifyToken(token);
+
+        // Filter out hidden events for non-admin users
+        const filteredSummaries = isAdmin
+          ? summaries
+          : summaries.filter((summary) => !summary.isHidden);
+
+        const transformedSummaries = filteredSummaries.map((summary) =>
           this.transformEventSummaryToCamelCase(summary)
         );
         res.json(transformedSummaries);
@@ -645,7 +697,8 @@ export class WebServer {
             return res.status(400).json({ error: "Invalid event ID" });
           }
 
-          const { name, startDate, endDate, timezone, description } = req.body;
+          const { name, startDate, endDate, timezone, description, isHidden } =
+            req.body;
 
           // Validate dates if provided
           if (startDate || endDate) {
@@ -675,6 +728,7 @@ export class WebServer {
           if (timezone !== undefined) updateData.timezone = timezone;
           if (description !== undefined)
             updateData.description = description?.trim() || null;
+          if (isHidden !== undefined) updateData.isHidden = isHidden;
 
           await this.database.updateEvent(eventId, updateData);
           const updatedEvent = await this.database.getEvent(eventId);
@@ -734,6 +788,53 @@ export class WebServer {
         } catch (error) {
           console.error("Error activating event:", error);
           res.status(500).json({ error: "Failed to activate event" });
+        }
+      }
+    );
+
+    // Delete event
+    this.app.delete(
+      "/api/events/:id",
+      this.authenticateAdmin.bind(this),
+      async (req, res) => {
+        try {
+          const eventId = parseInt(req.params.id);
+          if (isNaN(eventId)) {
+            return res.status(400).json({ error: "Invalid event ID" });
+          }
+
+          // Check if event exists first
+          const event = await this.database.getEvent(eventId);
+          if (!event) {
+            return res.status(404).json({ error: "Event not found" });
+          }
+
+          // Prevent deletion of active events
+          if (event.isActive) {
+            return res.status(400).json({
+              error:
+                "Cannot delete an active event. Please activate another event first.",
+            });
+          }
+
+          const deleted = await this.database.deleteEvent(eventId);
+
+          if (deleted) {
+            console.log(`🗑️  Event deleted: "${event.name}" (ID: ${eventId})`);
+            res.json({
+              success: true,
+              message: `Event "${event.name}" has been deleted successfully.`,
+              deletedEventId: eventId,
+            });
+          } else {
+            res.status(404).json({ error: "Event not found" });
+          }
+        } catch (error) {
+          console.error("Error deleting event:", error);
+          const errorMessage = (error as Error).message;
+          res.status(500).json({
+            error: errorMessage || "Failed to delete event",
+          });
         }
       }
     );

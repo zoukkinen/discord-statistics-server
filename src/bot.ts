@@ -1,213 +1,290 @@
-import { Client, GatewayIntentBits, ActivityType } from 'discord.js';
-import { Database } from './database';
-import { WebServer } from './webServer';
-import dotenv from 'dotenv';
+import { Client, GatewayIntentBits, ActivityType } from "discord.js";
+import { Database } from "./database";
+import { WebServer } from "./webServer";
+import dotenv from "dotenv";
 
 dotenv.config();
 
 export class DiscordActivityBot {
-    private client: Client;
-    private database: Database;
-    private webServer: WebServer;
-    private guildId: string;
-    private statsInterval: NodeJS.Timeout | null = null;
-    private presenceUpdateTimeout: NodeJS.Timeout | null = null;
+  private client: Client;
+  private database: Database;
+  private webServer: WebServer;
+  private guildId: string;
+  private statsInterval: NodeJS.Timeout | null = null;
+  private presenceUpdateTimeout: NodeJS.Timeout | null = null;
+  private activeEventId: number | null = null;
+  private eventCheckInterval: NodeJS.Timeout | null = null;
 
-    constructor() {
-        this.client = new Client({
-            intents: [
-                GatewayIntentBits.Guilds,
-                GatewayIntentBits.GuildMembers,
-                GatewayIntentBits.GuildPresences
-            ]
-        });
-        
-        this.guildId = process.env.DISCORD_GUILD_ID || '';
-        this.database = new Database(this.guildId);
-        this.webServer = new WebServer(this.database);
-        
-        this.setupEventHandlers();
+  constructor() {
+    this.client = new Client({
+      intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildPresences,
+      ],
+    });
+
+    this.guildId = process.env.DISCORD_GUILD_ID || "";
+    this.database = new Database(this.guildId);
+    this.webServer = new WebServer(this.database);
+
+    this.setupEventHandlers();
+  }
+
+  private setupEventHandlers(): void {
+    this.client.once("ready", async () => {
+      console.log(`✅ Bot is ready! Logged in as ${this.client.user?.tag}`);
+      await this.updateActiveEvent();
+      this.startStatsCollection();
+      this.startEventChecking();
+    });
+
+    this.client.on("guildMemberAdd", (member) => {
+      console.log(`📈 Member joined: ${member.user.tag}`);
+      this.collectCurrentStats();
+    });
+
+    this.client.on("guildMemberRemove", (member) => {
+      console.log(`📉 Member left: ${member.user.tag}`);
+      this.collectCurrentStats();
+    });
+
+    this.client.on("presenceUpdate", (oldPresence, newPresence) => {
+      if (newPresence?.guild?.id === this.guildId) {
+        this.handlePresenceUpdate(oldPresence, newPresence);
+      }
+    });
+
+    process.on("SIGINT", () => {
+      console.log("🔄 Shutting down gracefully...");
+      this.shutdown();
+    });
+
+    process.on("SIGTERM", () => {
+      console.log("🔄 Shutting down gracefully...");
+      this.shutdown();
+    });
+  }
+
+  private handlePresenceUpdate(oldPresence: any, newPresence: any): void {
+    const oldGame = oldPresence?.activities?.find(
+      (activity: any) => activity.type === ActivityType.Playing
+    );
+    const newGame = newPresence?.activities?.find(
+      (activity: any) => activity.type === ActivityType.Playing
+    );
+
+    let activityChanged = false;
+
+    // If user started playing a new game
+    if (newGame && (!oldGame || oldGame.name !== newGame.name)) {
+      this.database.recordGameSession(
+        newPresence.userId,
+        newGame.name,
+        "start",
+        this.activeEventId || undefined
+      );
+      console.log(
+        `🎮 ${newPresence.user?.tag} started playing ${newGame.name}`
+      );
+      activityChanged = true;
     }
 
-    private setupEventHandlers(): void {
-        this.client.once('ready', () => {
-            console.log(`✅ Bot is ready! Logged in as ${this.client.user?.tag}`);
-            this.startStatsCollection();
-        });
-
-        this.client.on('guildMemberAdd', (member) => {
-            console.log(`📈 Member joined: ${member.user.tag}`);
-            this.collectCurrentStats();
-        });
-
-        this.client.on('guildMemberRemove', (member) => {
-            console.log(`📉 Member left: ${member.user.tag}`);
-            this.collectCurrentStats();
-        });
-
-        this.client.on('presenceUpdate', (oldPresence, newPresence) => {
-            if (newPresence?.guild?.id === this.guildId) {
-                this.handlePresenceUpdate(oldPresence, newPresence);
-            }
-        });
-
-        process.on('SIGINT', () => {
-            console.log('🔄 Shutting down gracefully...');
-            this.shutdown();
-        });
-
-        process.on('SIGTERM', () => {
-            console.log('🔄 Shutting down gracefully...');
-            this.shutdown();
-        });
+    // If user stopped playing a game
+    if (oldGame && (!newGame || newGame.name !== oldGame.name)) {
+      this.database.recordGameSession(
+        newPresence.userId,
+        oldGame.name,
+        "end",
+        this.activeEventId || undefined
+      );
+      console.log(
+        `🎮 ${newPresence.user?.tag} stopped playing ${oldGame.name}`
+      );
+      activityChanged = true;
     }
 
-    private handlePresenceUpdate(oldPresence: any, newPresence: any): void {
-        const oldGame = oldPresence?.activities?.find((activity: any) => activity.type === ActivityType.Playing);
-        const newGame = newPresence?.activities?.find((activity: any) => activity.type === ActivityType.Playing);
-
-        let activityChanged = false;
-
-        // If user started playing a new game
-        if (newGame && (!oldGame || oldGame.name !== newGame.name)) {
-            this.database.recordGameSession(newPresence.userId, newGame.name, 'start');
-            console.log(`🎮 ${newPresence.user?.tag} started playing ${newGame.name}`);
-            activityChanged = true;
-        }
-
-        // If user stopped playing a game
-        if (oldGame && (!newGame || newGame.name !== oldGame.name)) {
-            this.database.recordGameSession(newPresence.userId, oldGame.name, 'end');
-            console.log(`🎮 ${newPresence.user?.tag} stopped playing ${oldGame.name}`);
-            activityChanged = true;
-        }
-
-        // If activity changed, trigger a quick stats update to refresh "Currently Playing"
-        if (activityChanged) {
-            // Debounce the stats collection to avoid spam
-            if (this.presenceUpdateTimeout) {
-                clearTimeout(this.presenceUpdateTimeout);
-            }
-            this.presenceUpdateTimeout = setTimeout(() => {
-                this.collectCurrentStats();
-            }, 5000); // Wait 5 seconds to batch multiple changes
-        }
-    }
-
-    private startStatsCollection(): void {
-        // Collect stats immediately
+    // If activity changed, trigger a quick stats update to refresh "Currently Playing"
+    if (activityChanged) {
+      // Debounce the stats collection to avoid spam
+      if (this.presenceUpdateTimeout) {
+        clearTimeout(this.presenceUpdateTimeout);
+      }
+      this.presenceUpdateTimeout = setTimeout(() => {
         this.collectCurrentStats();
-        
-        // Then collect every 2 minutes (reduced from 5 minutes for tighter tracking)
-        this.statsInterval = setInterval(() => {
-            this.collectCurrentStats();
-        }, 2 * 60 * 1000); // 2 minutes = 120 seconds
-
-        console.log('📊 Started automatic stats collection (every 2 minutes)');
+      }, 5000); // Wait 5 seconds to batch multiple changes
     }
+  }
 
-    private async collectCurrentStats(): Promise<void> {
-        try {
-            const guild = this.client.guilds.cache.get(this.guildId);
-            if (!guild) {
-                console.error('❌ Guild not found!');
-                return;
-            }
+  private async updateActiveEvent(): Promise<void> {
+    try {
+      const activeEvent = await this.database.getActiveEvent(this.guildId);
+      this.activeEventId = activeEvent?.id || null;
+      if (activeEvent) {
+        console.log(
+          `📅 Active event: ${activeEvent.name} (ID: ${activeEvent.id})`
+        );
+      } else {
+        console.log("⚠️  No active event found");
+      }
+    } catch (error) {
+      console.error("❌ Error fetching active event:", error);
+    }
+  }
 
-            // Force fetch all members to get accurate count
-            await guild.members.fetch();
-            
-            const totalMembers = guild.memberCount;
-            const onlineMembers = guild.members.cache.filter(member => 
-                member.presence?.status === 'online' || 
-                member.presence?.status === 'idle' || 
-                member.presence?.status === 'dnd'
-            ).size;
+  private startEventChecking(): void {
+    // Check for active event every 5 minutes
+    this.eventCheckInterval = setInterval(() => {
+      this.updateActiveEvent();
+    }, 5 * 60 * 1000); // 5 minutes
+    console.log("📅 Started automatic event checking (every 5 minutes)");
+  }
 
-            // Count members playing games
-            const playingGames = new Map<string, number>();
-            guild.members.cache.forEach(member => {
-                const game = member.presence?.activities?.find(activity => activity.type === ActivityType.Playing);
-                if (game) {
-                    playingGames.set(game.name, (playingGames.get(game.name) || 0) + 1);
-                }
-            });
+  private startStatsCollection(): void {
+    // Collect stats immediately
+    this.collectCurrentStats();
 
-            // Save to database
-            await this.database.recordMemberCount(totalMembers, onlineMembers);
-            
-            for (const [gameName, playerCount] of playingGames) {
-                await this.database.recordGameActivity(gameName, playerCount);
-            }
+    // Then collect every 2 minutes (reduced from 5 minutes for tighter tracking)
+    this.statsInterval = setInterval(() => {
+      this.collectCurrentStats();
+    }, 2 * 60 * 1000); // 2 minutes = 120 seconds
 
-            console.log(`📊 Stats collected: ${onlineMembers}/${totalMembers} members online, ${playingGames.size} different games being played`);
-            
-            // Clean up stale game sessions periodically (every 10 collection cycles = ~20 minutes)
-            if (Math.random() < 0.1) {
-                await this.database.cleanupStaleGameSessions();
-                await this.syncGameSessions(guild);
-            }
-            
-        } catch (error) {
-            console.error('❌ Error collecting stats:', error);
+    console.log("📊 Started automatic stats collection (every 2 minutes)");
+  }
+
+  private async collectCurrentStats(): Promise<void> {
+    try {
+      const guild = this.client.guilds.cache.get(this.guildId);
+      if (!guild) {
+        console.error("❌ Guild not found!");
+        return;
+      }
+
+      // Force fetch all members to get accurate count
+      await guild.members.fetch();
+
+      const totalMembers = guild.memberCount;
+      const onlineMembers = guild.members.cache.filter(
+        (member) =>
+          member.presence?.status === "online" ||
+          member.presence?.status === "idle" ||
+          member.presence?.status === "dnd"
+      ).size;
+
+      // Count members playing games
+      const playingGames = new Map<string, number>();
+      guild.members.cache.forEach((member) => {
+        const game = member.presence?.activities?.find(
+          (activity) => activity.type === ActivityType.Playing
+        );
+        if (game) {
+          playingGames.set(game.name, (playingGames.get(game.name) || 0) + 1);
         }
+      });
+
+      // Save to database with active event ID
+      await this.database.recordMemberCount(
+        totalMembers,
+        onlineMembers,
+        this.activeEventId || undefined
+      );
+
+      for (const [gameName, playerCount] of playingGames) {
+        await this.database.recordGameActivity(
+          gameName,
+          playerCount,
+          this.activeEventId || undefined
+        );
+      }
+
+      console.log(
+        `📊 Stats collected: ${onlineMembers}/${totalMembers} members online, ${
+          playingGames.size
+        } different games being played${
+          this.activeEventId ? ` (Event ID: ${this.activeEventId})` : ""
+        }`
+      );
+
+      // Clean up stale game sessions periodically (every 10 collection cycles = ~20 minutes)
+      if (Math.random() < 0.1) {
+        await this.database.cleanupStaleGameSessions();
+        await this.syncGameSessions(guild);
+      }
+    } catch (error) {
+      console.error("❌ Error collecting stats:", error);
     }
+  }
 
-    private async syncGameSessions(guild: any): Promise<void> {
-        try {
-            // Get all currently active sessions from database
-            const activeSessions = await this.database.getActiveSessions();
-            
-            // Get current Discord presence data
-            const currentlyPlaying = new Map<string, Set<string>>();
-            guild.members.cache.forEach((member: any) => {
-                const game = member.presence?.activities?.find((activity: any) => activity.type === ActivityType.Playing);
-                if (game) {
-                    if (!currentlyPlaying.has(game.name)) {
-                        currentlyPlaying.set(game.name, new Set());
-                    }
-                    currentlyPlaying.get(game.name)!.add(member.id);
-                }
-            });
+  private async syncGameSessions(guild: any): Promise<void> {
+    try {
+      // Get all currently active sessions from database
+      const activeSessions = await this.database.getActiveSessions();
 
-            // End sessions for users who are no longer playing according to Discord
-            for (const session of activeSessions) {
-                const currentPlayers = currentlyPlaying.get(session.game_name);
-                if (!currentPlayers || !currentPlayers.has(session.user_id)) {
-                    await this.database.recordGameSession(session.user_id, session.game_name, 'end');
-                    console.log(`🧹 Auto-ended stale session: User ...${session.user_id.slice(-4)} - ${session.game_name}`);
-                }
-            }
-
-            console.log(`🔄 Synced game sessions with Discord presence data`);
-        } catch (error) {
-            console.error('❌ Error syncing game sessions:', error);
+      // Get current Discord presence data
+      const currentlyPlaying = new Map<string, Set<string>>();
+      guild.members.cache.forEach((member: any) => {
+        const game = member.presence?.activities?.find(
+          (activity: any) => activity.type === ActivityType.Playing
+        );
+        if (game) {
+          if (!currentlyPlaying.has(game.name)) {
+            currentlyPlaying.set(game.name, new Set());
+          }
+          currentlyPlaying.get(game.name)!.add(member.id);
         }
+      });
+
+      // End sessions for users who are no longer playing according to Discord
+      for (const session of activeSessions) {
+        const currentPlayers = currentlyPlaying.get(session.game_name);
+        if (!currentPlayers || !currentPlayers.has(session.user_id)) {
+          await this.database.recordGameSession(
+            session.user_id,
+            session.game_name,
+            "end",
+            this.activeEventId || undefined
+          );
+          console.log(
+            `🧹 Auto-ended stale session: User ...${session.user_id.slice(
+              -4
+            )} - ${session.game_name}`
+          );
+        }
+      }
+
+      console.log(`🔄 Synced game sessions with Discord presence data`);
+    } catch (error) {
+      console.error("❌ Error syncing game sessions:", error);
+    }
+  }
+
+  public async start(): Promise<void> {
+    try {
+      await this.database.initialize();
+      await this.webServer.start();
+      await this.client.login(process.env.DISCORD_TOKEN);
+    } catch (error) {
+      console.error("❌ Failed to start bot:", error);
+      process.exit(1);
+    }
+  }
+
+  private async shutdown(): Promise<void> {
+    console.log("🔄 Shutting down Discord Activity Bot...");
+
+    if (this.statsInterval) {
+      clearInterval(this.statsInterval);
     }
 
-    public async start(): Promise<void> {
-        try {
-            await this.database.initialize();
-            await this.webServer.start();
-            await this.client.login(process.env.DISCORD_TOKEN);
-        } catch (error) {
-            console.error('❌ Failed to start bot:', error);
-            process.exit(1);
-        }
+    if (this.eventCheckInterval) {
+      clearInterval(this.eventCheckInterval);
     }
 
-    private async shutdown(): Promise<void> {
-        console.log('🔄 Shutting down Discord Activity Bot...');
-        
-        if (this.statsInterval) {
-            clearInterval(this.statsInterval);
-        }
-        
-        this.client.destroy();
-        await this.webServer.stop();
-        await this.database.close();
-        
-        console.log('✅ Shutdown complete');
-        process.exit(0);
-    }
+    this.client.destroy();
+    await this.webServer.stop();
+    await this.database.close();
+
+    console.log("✅ Shutdown complete");
+    process.exit(0);
+  }
 }
