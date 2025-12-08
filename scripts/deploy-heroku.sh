@@ -53,39 +53,57 @@ fi
 echo -e "${YELLOW}🐳 Setting stack to container...${NC}"
 heroku stack:set container --app $APP_NAME
 
-# Set environment variables from .env file
-echo -e "${YELLOW}⚙️  Setting environment variables...${NC}"
+# Check if Heroku PostgreSQL add-on is already set up
+echo -e "${YELLOW}📋 Checking Heroku configuration...${NC}"
+if heroku config --app $APP_NAME | grep -q "DATABASE_URL"; then
+    echo -e "${GREEN}✅ PostgreSQL database found${NC}"
+else
+    echo -e "${YELLOW}⚠️  No DATABASE_URL found. Add PostgreSQL add-on with:${NC}"
+    echo "heroku addons:create heroku-postgresql:hobby-dev --app $APP_NAME"
+fi
 
-# Read .env file and set variables (excluding comments and empty lines)
-while IFS= read -r line; do
-    # Skip comments and empty lines
-    if [[ $line =~ ^[[:space:]]*# ]] || [[ -z "${line// }" ]]; then
-        continue
-    fi
-    
-    # Extract key=value pairs
-    if [[ $line =~ ^([^=]+)=(.*)$ ]]; then
-        key="${BASH_REMATCH[1]}"
-        value="${BASH_REMATCH[2]}"
-        
-        # Skip commented out variables
-        if [[ $key =~ ^[[:space:]]*# ]]; then
-            continue
-        fi
-        
-        # Remove quotes if present
-        value=$(echo "$value" | sed 's/^"//; s/"$//')
-        
-        # Set the environment variable
-        echo "Setting $key..."
-        heroku config:set "$key=$value" --app $APP_NAME
-    fi
-done < .env
+# Display current configuration
+echo -e "${YELLOW}⚙️  Current Heroku configuration:${NC}"
+heroku config --app $APP_NAME || true
 
-# Set Heroku-specific environment variables
-echo -e "${YELLOW}🌐 Setting Heroku-specific variables...${NC}"
-heroku config:set PORT=\$PORT --app $APP_NAME
-heroku config:set NODE_ENV=production --app $APP_NAME
+# Instructions for setting environment variables
+echo ""
+echo -e "${BLUE}📝 Environment Variables:${NC}"
+echo "Use the following commands to set required variables:"
+echo ""
+echo "heroku config:set DISCORD_TOKEN=your_token --app $APP_NAME"
+echo "heroku config:set DISCORD_GUILD_ID=your_guild_id --app $APP_NAME"
+echo "heroku config:set ADMIN_PASSWORD=your_password --app $APP_NAME"
+echo "heroku config:set CREDENTIAL_ENCRYPTION_KEY=your_key --app $APP_NAME"
+echo ""
+echo -e "${YELLOW}Or set multiple at once:${NC}"
+echo "heroku config:set DISCORD_TOKEN=token DISCORD_GUILD_ID=123 ADMIN_PASSWORD=pass --app $APP_NAME"
+echo ""
+
+# Verify required variables are set
+echo -e "${YELLOW}🔍 Verifying required environment variables...${NC}"
+REQUIRED_VARS=("DISCORD_TOKEN" "DISCORD_GUILD_ID" "ADMIN_PASSWORD" "CREDENTIAL_ENCRYPTION_KEY")
+MISSING_VARS=()
+
+for var in "${REQUIRED_VARS[@]}"; do
+    if heroku config --app $APP_NAME | grep -q "$var"; then
+        echo -e "${GREEN}✅ $var is set${NC}"
+    else
+        echo -e "${YELLOW}⚠️  $var is NOT set${NC}"
+        MISSING_VARS+=("$var")
+    fi
+done
+
+if [ ${#MISSING_VARS[@]} -gt 0 ]; then
+    echo ""
+    echo -e "${RED}⚠️  Missing required variables: ${MISSING_VARS[*]}${NC}"
+    read -p "Continue with deployment anyway? (y/n): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Deployment cancelled."
+        exit 1
+    fi
+fi
 
 # Add buildpacks if using regular deployment (not container)
 # heroku buildpacks:add heroku/nodejs --app $APP_NAME
