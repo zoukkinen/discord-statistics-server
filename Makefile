@@ -46,11 +46,17 @@ help: ## Show available commands
 	@echo "  deploy        Full production deployment"
 	@echo "  health        Check application health"
 	@echo ""
+	@echo "Heroku:"
+	@echo "  heroku-deploy Deploy to Heroku (APP_NAME=name)"
+	@echo "  heroku-logs   View Heroku logs (APP_NAME=name)"
+	@echo "  heroku-status Check Heroku status (APP_NAME=name)"
+	@echo ""
 	@echo "Database:"
 	@echo "  migrate       Run database migrations"
 	@echo "  backup        Backup local database"
 	@echo "  restore       Restore database (BACKUP_FILE=filename)"
 	@echo "  list-backups  List available backups"
+	@echo "  sync-prod     Sync with production data (HEROKU_APP=name)"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  clean         Remove all containers and data"
@@ -132,6 +138,22 @@ deploy: validate-env deploy-check build prod ## Full production deployment with 
 	@echo "🧪 Running post-deployment health checks..."
 	@sleep 10
 	@$(MAKE) health
+
+# === HEROKU DEPLOYMENT ===
+heroku-deploy: ## Deploy to Heroku (APP_NAME=name)
+	@if [ -z "$(APP_NAME)" ]; then echo "❌ Usage: make heroku-deploy APP_NAME=your-app-name"; exit 1; fi
+	@echo "🚀 Deploying to Heroku..."
+	@./scripts/deploy-heroku.sh $(APP_NAME)
+
+heroku-logs: ## View Heroku logs (APP_NAME=name)
+	@if [ -z "$(APP_NAME)" ]; then echo "❌ Usage: make heroku-logs APP_NAME=your-app-name"; exit 1; fi
+	@heroku logs --tail --app $(APP_NAME)
+
+heroku-status: ## Check Heroku status (APP_NAME=name)
+	@if [ -z "$(APP_NAME)" ]; then echo "❌ Usage: make heroku-status APP_NAME=your-app-name"; exit 1; fi
+	@echo "📊 Heroku Status:"
+	@heroku ps --app $(APP_NAME)
+
 
 # === MONITORING ===
 logs: ## Show application logs
@@ -253,6 +275,14 @@ list-backups: ## List available backups
 	@ls -la backups/ 2>/dev/null || echo "No backups found"
 
 
+sync-prod: ## Sync with production data
+	@if [ -z "$(HEROKU_APP)" ]; then HEROKU_APP="assembly-discord-tracker-2025"; fi; \
+	echo "🚀 Syncing with production ($$HEROKU_APP)..."; \
+	$(DOCKER_COMPOSE) stop discord-bot; \
+	./scripts/heroku-backup.sh backup $$HEROKU_APP; \
+	./scripts/heroku-backup.sh restore $$HEROKU_APP; \
+	$(DOCKER_COMPOSE) up -d; \
+	echo "✅ Synced with production!"
 
 # === SSL SETUP ===
 ssl-setup: ## Complete SSL setup (DOMAIN=domain EMAIL=email)
