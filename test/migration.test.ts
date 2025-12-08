@@ -80,7 +80,9 @@ class MigrationTester {
       await this.adapter.initialize();
       this.addResult(true, "Database connection established");
     } catch (error) {
-      this.addResult(false, "Database connection failed", error.message);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.addResult(false, "Database connection failed", errorMessage);
       throw error;
     }
   }
@@ -98,7 +100,7 @@ class MigrationTester {
       this.addResult(
         migrationResult.rows.length > 0,
         `Found ${migrationResult.rows.length} executed migrations`,
-        migrationResult.rows.map((r) => r.migration_name)
+        migrationResult.rows.map((r: any) => r.migration_name)
       );
 
       // Check if events table exists with new columns
@@ -109,7 +111,7 @@ class MigrationTester {
         ORDER BY ordinal_position
       `);
 
-      const columns = eventsTableInfo.rows.map((r) => r.column_name);
+      const columns = eventsTableInfo.rows.map((r: any) => r.column_name);
       const hasDiscordColumns =
         columns.includes("discord_token") &&
         columns.includes("discord_guild_id");
@@ -120,7 +122,9 @@ class MigrationTester {
         columns
       );
     } catch (error) {
-      this.addResult(false, "Migration verification failed", error.message);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.addResult(false, "Migration verification failed", errorMessage);
     }
   }
 
@@ -158,7 +162,9 @@ class MigrationTester {
         `Events listing successful (${eventsList.length} events found)`
       );
     } catch (error) {
-      this.addResult(false, "Event creation failed", error.message);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.addResult(false, "Event creation failed", errorMessage);
     }
   }
 
@@ -214,7 +220,9 @@ class MigrationTester {
         "Discord credentials properly decrypted on retrieval"
       );
     } catch (error) {
-      this.addResult(false, "Discord credentials test failed", error.message);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.addResult(false, "Discord credentials test failed", errorMessage);
     }
   }
 
@@ -258,17 +266,19 @@ class MigrationTester {
 
       // Test data retrieval
       const currentStats = await this.adapter.getCurrentStats(activeEvent.id);
+      const memberStats = currentStats.memberStats;
       this.addResult(
-        currentStats.memberStats &&
-          currentStats.memberStats.total_members === 100,
+        !!memberStats && memberStats.total_members === 100,
         "Current statistics retrieval successful",
         {
-          totalMembers: currentStats.memberStats?.total_members,
+          totalMembers: memberStats?.total_members,
           activeGames: currentStats.currentGames.length,
         }
       );
     } catch (error) {
-      this.addResult(false, "Data operations test failed", error.message);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.addResult(false, "Data operations test failed", errorMessage);
     }
   }
 
@@ -284,8 +294,9 @@ class MigrationTester {
       this.addResult(true, "Backward compatible game activity recording");
 
       const stats = await this.adapter.getCurrentStats();
+      const memberStatsBc = stats.memberStats;
       this.addResult(
-        stats.memberStats && stats.memberStats.total_members === 110,
+        !!memberStatsBc && memberStatsBc.total_members === 110,
         "Backward compatible statistics retrieval"
       );
 
@@ -302,11 +313,9 @@ class MigrationTester {
         `Backward compatible member stats range query (${memberStats.length} records)`
       );
     } catch (error) {
-      this.addResult(
-        false,
-        "Backward compatibility test failed",
-        error.message
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.addResult(false, "Backward compatibility test failed", errorMessage);
     }
   }
 
@@ -353,7 +362,9 @@ class MigrationTester {
         `Event summaries generation successful (${summaries.length} events)`
       );
     } catch (error) {
-      this.addResult(false, "Event management test failed", error.message);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.addResult(false, "Event management test failed", errorMessage);
     }
   }
 
@@ -375,7 +386,7 @@ class MigrationTester {
           isActive: false,
         });
         this.addResult(false, "Should have rejected invalid Discord token");
-      } catch (error) {
+      } catch (error: unknown) {
         this.addResult(true, "Properly rejected invalid Discord token format");
       }
 
@@ -394,7 +405,7 @@ class MigrationTester {
           isActive: false,
         });
         this.addResult(false, "Should have rejected invalid Guild ID");
-      } catch (error) {
+      } catch (error: unknown) {
         this.addResult(
           true,
           "Properly rejected invalid Discord Guild ID format"
@@ -408,7 +419,9 @@ class MigrationTester {
         "Properly handles non-existent event queries"
       );
     } catch (error) {
-      this.addResult(false, "Error handling test failed", error.message);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.addResult(false, "Error handling test failed", errorMessage);
     }
   }
 
@@ -438,7 +451,9 @@ class MigrationTester {
         console.log("✅ Cleanup completed");
       }
     } catch (error) {
-      console.warn("⚠️  Cleanup failed:", error.message);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.warn("⚠️  Cleanup failed:", errorMessage);
     }
   }
 }
