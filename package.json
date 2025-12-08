@@ -1,6 +1,6 @@
 {
   "name": "assembly-discord-tracker",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Discord activity tracker for Assembly Summer 2025 - monitors Discord server member count and game activity",
   "main": "dist/index.js",
   "scripts": {
