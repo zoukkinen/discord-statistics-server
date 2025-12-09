@@ -1,7 +1,6 @@
 # Assembly Discord Tracker
 
 [![Comprehensive Test Suite](https://github.com/zoukkinen/discord-statistics-server/actions/workflows/test.yml/badge.svg)](https://github.com/zoukkinen/discord-statistics-server/actions/workflows/test.yml)
-[![Deploy to Heroku](https://github.com/zoukkinen/discord-statistics-server/actions/workflows/deploy.yml/badge.svg)](https://github.com/zoukkinen/discord-statistics-server/actions/workflows/deploy.yml)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8+-blue)](https://www.typescriptlang.org)
