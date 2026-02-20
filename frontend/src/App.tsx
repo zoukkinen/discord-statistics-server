@@ -6,7 +6,6 @@ import CurrentlyPlaying from "./components/CurrentlyPlaying";
 import TopGames from "./components/TopGames";
 import RecentActivity from "./components/RecentActivity";
 import Charts from "./components/Charts";
-import InstallButton from "./components/InstallButton";
 import EventManager from "./components/EventManager";
 import AdminAuth from "./components/AdminAuth";
 import EventDetail from "./components/EventDetail";
@@ -24,8 +23,8 @@ const App: Component = () => {
     window.location.pathname === "/admin"
       ? "admin"
       : window.location.pathname.startsWith("/events/")
-      ? "event"
-      : "dashboard"
+        ? "event"
+        : "dashboard",
   );
 
   // Extract event ID from URL
@@ -227,7 +226,6 @@ const App: Component = () => {
             </div>
           </main>
 
-          <InstallButton />
           <Footer />
         </div>
       }
