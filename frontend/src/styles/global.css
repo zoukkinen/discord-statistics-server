@@ -291,7 +291,7 @@ body::before {
 }
 
 /* Responsive Design & Tablet Optimization */
-@media screen and (max-width: 1024px) {
+@media screen and (max-width: 1180px) {
   .app {
     padding: 8px;
     max-width: 100%;
@@ -304,26 +304,66 @@ body::before {
 
   /* Compact header for tablets */
   .header {
-    padding: 12px;
-    margin-bottom: 10px;
+    padding: 10px 15px;
+    margin-bottom: 8px;
   }
 
   .main-title {
-    font-size: 1.6em;
+    font-size: 1.5em;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    margin-bottom: 2px;
   }
 
   /* Compact stats for tablets */
   .stats-grid {
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
-    gap: 10px !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+    margin-bottom: 8px !important;
   }
 
   .stat-card {
-    padding: 8px;
+    padding: 6px;
+  }
+
+  .stat-card h3 {
+    font-size: 0.75em;
+    margin-bottom: 2px;
   }
 
   .big-number {
-    font-size: 1.5em;
+    font-size: 1.3em;
+  }
+
+  /* Reduce height of charts and items in landscape to fit more content */
+  .chart-wrapper {
+    height: 220px !important;
+  }
+
+  .game-item {
+    padding: 8px !important;
+    gap: 8px !important;
+  }
+
+  .activity-item {
+    padding: 8px !important;
+    gap: 8px !important;
+  }
+
+  .card {
+    padding: 12px !important;
+  }
+
+  .card-title {
+    font-size: 1.1rem !important;
+    margin-bottom: 10px !important;
+  }
+
+  /* Compact activity list */
+  .activity-list {
+    max-height: 250px !important;
   }
 }
 
