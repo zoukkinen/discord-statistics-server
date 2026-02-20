@@ -818,7 +818,7 @@ const EventManager: Component<EventManagerProps> = (props) => {
                     <div class="top-games-section">
                       <h3>🏆 Top Games</h3>
                       <div class="game-list">
-                        <For each={stats().topGames.slice(0, 10)}>
+                        <For each={stats().topGames}>
                           {(game, index) => (
                             <div class="game-item">
                               <span class="game-rank">
