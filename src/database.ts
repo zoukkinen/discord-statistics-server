@@ -18,6 +18,8 @@ export interface GameSession {
   id: number;
   user_id: string;
   game_name: string;
+  game_name_alias?: string | null;
+  is_removed: boolean;
   start_time: string;
   end_time?: string;
   duration_minutes?: number;
@@ -37,7 +39,7 @@ export class Database {
   public async recordMemberCount(
     totalMembers: number,
     onlineMembers: number,
-    eventId?: number
+    eventId?: number,
   ): Promise<void> {
     return this.adapter.recordMemberCount(totalMembers, onlineMembers, eventId);
   }
@@ -45,7 +47,7 @@ export class Database {
   public async recordGameActivity(
     gameName: string,
     playerCount: number,
-    eventId?: number
+    eventId?: number,
   ): Promise<void> {
     return this.adapter.recordGameActivity(gameName, playerCount, eventId);
   }
@@ -54,7 +56,7 @@ export class Database {
     userId: string,
     gameName: string,
     action: "start" | "end",
-    eventId?: number
+    eventId?: number,
   ): Promise<void> {
     return this.adapter.recordGameSession(userId, gameName, action, eventId);
   }
@@ -62,7 +64,7 @@ export class Database {
   public async getMemberStatsInRange(
     startDate: string,
     endDate: string,
-    eventId?: number
+    eventId?: number,
   ): Promise<MemberStats[]> {
     return this.adapter.getMemberStatsInRange(startDate, endDate, eventId);
   }
@@ -70,7 +72,7 @@ export class Database {
   public async getGameStatsInRange(
     startDate: string,
     endDate: string,
-    eventId?: number
+    eventId?: number,
   ): Promise<GameStats[]> {
     return this.adapter.getGameStatsInRange(startDate, endDate, eventId);
   }
@@ -78,7 +80,7 @@ export class Database {
   public async getGameSessionsInRange(
     startDate: string,
     endDate: string,
-    eventId?: number
+    eventId?: number,
   ): Promise<GameSession[]> {
     return this.adapter.getGameSessionsInRange(startDate, endDate, eventId);
   }
@@ -87,7 +89,7 @@ export class Database {
     startDate: string,
     endDate: string,
     limit?: number,
-    eventId?: number
+    eventId?: number,
   ): Promise<
     {
       game_name: string;
@@ -102,7 +104,7 @@ export class Database {
   public async getUserActivity(
     startDate: string,
     endDate: string,
-    eventId?: number
+    eventId?: number,
   ): Promise<
     {
       user_id: string;
@@ -115,9 +117,7 @@ export class Database {
     return this.adapter.getUserActivity(startDate, endDate, eventId);
   }
 
-  public async getCurrentStats(
-    eventId?: number
-  ): Promise<{
+  public async getCurrentStats(eventId?: number): Promise<{
     memberStats: MemberStats | null;
     currentGames: { game_name: string; player_count: number }[];
   }> {
@@ -129,7 +129,7 @@ export class Database {
   }
 
   public async getActiveSessions(
-    eventId?: number
+    eventId?: number,
   ): Promise<{ user_id: string; game_name: string; start_time: string }[]> {
     return this.adapter.getActiveSessions(eventId);
   }
@@ -140,7 +140,7 @@ export class Database {
 
   // Event management methods
   public async createEvent(
-    event: Omit<Event, "id" | "createdAt" | "updatedAt">
+    event: Omit<Event, "id" | "createdAt" | "updatedAt">,
   ): Promise<Event> {
     return this.adapter.createEvent(event);
   }
@@ -155,7 +155,7 @@ export class Database {
 
   public async updateEvent(
     id: number,
-    updates: Partial<Event>
+    updates: Partial<Event>,
   ): Promise<Event> {
     return this.adapter.updateEvent(id, updates);
   }
@@ -183,6 +183,25 @@ export class Database {
 
     const events = await this.adapter.getEvents(guildId);
     return events.find((event) => event.id === eventId) || null;
+  }
+
+  public async getEventSessions(eventId: number): Promise<GameSession[]> {
+    return this.adapter.getEventSessions(eventId);
+  }
+
+  public async bulkRenameGame(
+    eventId: number,
+    oldName: string,
+    newName: string,
+  ): Promise<number> {
+    return this.adapter.bulkRenameGame(eventId, oldName, newName);
+  }
+
+  public async toggleSessionRemoved(
+    sessionId: number,
+    isRemoved: boolean,
+  ): Promise<GameSession> {
+    return this.adapter.toggleSessionRemoved(sessionId, isRemoved);
   }
 
   public async cleanup(): Promise<void> {

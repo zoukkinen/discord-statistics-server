@@ -39,6 +39,18 @@ interface EventStats {
   } | null;
 }
 
+interface GameSessionAdmin {
+  id: number;
+  user_id: string;
+  game_name: string;
+  game_name_alias?: string | null;
+  is_removed: boolean;
+  start_time: string;
+  end_time?: string;
+  duration_minutes?: number;
+  event_id?: number;
+}
+
 interface CreateEventData {
   name: string;
   startDate: string;
@@ -63,6 +75,18 @@ const EventManager: Component<EventManagerProps> = (props) => {
   const [editModal, setEditModal] = createSignal<EventData | null>(null);
   const [deleteModal, setDeleteModal] = createSignal<EventData | null>(null);
   const [isDeleting, setIsDeleting] = createSignal(false);
+  const [statsView, setStatsView] = createSignal<"summary" | "sessions">(
+    "summary",
+  );
+  const [statsEventId, setStatsEventId] = createSignal<number | null>(null);
+  const [editingGame, setEditingGame] = createSignal<string | null>(null);
+  const [renameValue, setRenameValue] = createSignal("");
+  const [renameLoading, setRenameLoading] = createSignal(false);
+  const [sessions, setSessions] = createSignal<GameSessionAdmin[]>([]);
+  const [sessionsLoading, setSessionsLoading] = createSignal(false);
+  const [toggleLoadingId, setToggleLoadingId] = createSignal<number | null>(
+    null,
+  );
   const [formData, setFormData] = createSignal<CreateEventData>({
     name: "",
     startDate: "",
@@ -90,7 +114,7 @@ const EventManager: Component<EventManagerProps> = (props) => {
         throw new Error(`Failed to fetch events: ${response.statusText}`);
       }
       return response.json();
-    }
+    },
   );
 
   const showMessage = (text: string, type: "success" | "error" = "success") => {
@@ -257,7 +281,7 @@ const EventManager: Component<EventManagerProps> = (props) => {
       } else {
         showMessage(
           result.error || "Failed to update event visibility",
-          "error"
+          "error",
         );
       }
     } catch (error) {
@@ -283,7 +307,7 @@ const EventManager: Component<EventManagerProps> = (props) => {
 
     if (now < start) {
       const daysUntil = Math.ceil(
-        (start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+        (start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
       );
       confirmMessage += `\n\n⏳ This is an upcoming event starting in ${daysUntil} days.\nIt will be displayed on the frontend but tracking will begin when the event starts.`;
     } else if (now > end) {
@@ -323,12 +347,108 @@ const EventManager: Component<EventManagerProps> = (props) => {
       const stats: EventStats = await response.json();
 
       if (response.ok) {
+        setStatsEventId(eventId);
+        setStatsView("summary");
+        setEditingGame(null);
+        setSessions([]);
         setStatsModal(stats);
       } else {
         showMessage("Failed to load stats", "error");
       }
     } catch (error) {
       showMessage(`Network error: ${(error as Error).message}`, "error");
+    }
+  };
+
+  const loadSessions = async () => {
+    const evId = statsEventId();
+    if (!evId) return;
+    setSessionsLoading(true);
+    try {
+      const response = await fetch(`/api/events/${evId}/sessions`, {
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        setSessions(await response.json());
+      }
+    } catch {
+      // silently ignore; user will see empty list
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  const startEditGame = (name: string) => {
+    setEditingGame(name);
+    setRenameValue(name);
+  };
+
+  const cancelEditGame = () => {
+    setEditingGame(null);
+    setRenameValue("");
+  };
+
+  const saveRename = async (oldName: string) => {
+    const evId = statsEventId();
+    if (!evId) return;
+    const newName = renameValue().trim();
+    if (!newName || newName === oldName) {
+      cancelEditGame();
+      return;
+    }
+    setRenameLoading(true);
+    try {
+      const response = await fetch(`/api/events/${evId}/rename-game`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ oldName, newName }),
+      });
+      if (response.ok) {
+        cancelEditGame();
+        // Refresh stats and sessions
+        const statsRes = await fetch(`/api/events/${evId}/stats`);
+        if (statsRes.ok) setStatsModal(await statsRes.json());
+        if (sessions().length > 0) await loadSessions();
+      } else {
+        const result = await response.json();
+        showMessage(result.error || "Failed to rename game", "error");
+      }
+    } catch (error) {
+      showMessage(`Network error: ${(error as Error).message}`, "error");
+    } finally {
+      setRenameLoading(false);
+    }
+  };
+
+  const toggleRemoved = async (session: GameSessionAdmin) => {
+    const evId = statsEventId();
+    if (!evId) return;
+    setToggleLoadingId(session.id);
+    try {
+      const response = await fetch(
+        `/api/events/${evId}/sessions/${session.id}`,
+        {
+          method: "PATCH",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ isRemoved: !session.is_removed }),
+        },
+      );
+      if (response.ok) {
+        const updated: GameSessionAdmin = await response.json();
+        setSessions((prev) =>
+          prev.map((s) => (s.id === updated.id ? updated : s)),
+        );
+        // Refresh stats counts
+        const statsRes = await fetch(`/api/events/${evId}/stats`);
+        if (statsRes.ok) setStatsModal(await statsRes.json());
+      } else {
+        const result = await response.json();
+        showMessage(result.error || "Failed to update session", "error");
+      }
+    } catch (error) {
+      showMessage(`Network error: ${(error as Error).message}`, "error");
+    } finally {
+      setToggleLoadingId(null);
     }
   };
 
@@ -635,82 +755,212 @@ const EventManager: Component<EventManagerProps> = (props) => {
                 </button>
               </div>
 
+              {/* Tab switcher */}
+              <div class="stats-tabs">
+                <button
+                  class={`stats-tab${statsView() === "summary" ? " active" : ""}`}
+                  onClick={() => setStatsView("summary")}
+                >
+                  Summary
+                </button>
+                <button
+                  class={`stats-tab${statsView() === "sessions" ? " active" : ""}`}
+                  onClick={() => {
+                    setStatsView("sessions");
+                    if (sessions().length === 0) loadSessions();
+                  }}
+                >
+                  Sessions
+                </button>
+              </div>
+
               <div class="modal-body">
-                <div class="stats-grid">
-                  <div class="stat-card">
-                    <h3>👥 Online</h3>
-                    <div class="big-number">{stats().peakOnlineMembers}</div>
-                    <div class="stat-secondary">
-                      peak of {stats().peakTotalMembers} members
+                {/* Summary tab */}
+                <Show when={statsView() === "summary"}>
+                  <div class="stats-grid">
+                    <div class="stat-card">
+                      <h3>👥 Online</h3>
+                      <div class="big-number">{stats().peakOnlineMembers}</div>
+                      <div class="stat-secondary">
+                        peak of {stats().peakTotalMembers} members
+                      </div>
+                    </div>
+
+                    <div class="stat-card">
+                      <h3>🎮 Games</h3>
+                      <div class="big-number">{stats().totalUniqueGames}</div>
+                      <div class="stat-secondary">Total games played</div>
+                    </div>
+
+                    <div class="stat-card">
+                      <h3>🎯 Players</h3>
+                      <div class="big-number">{stats().totalGameSessions}</div>
+                      <div class="stat-secondary">Gaming sessions</div>
+                    </div>
+
+                    <div class="stat-card">
+                      <h3>📅 Event Period</h3>
+                      <div class="big-number">
+                        {(() => {
+                          const hours = stats().eventDurationHours;
+                          const days = Math.floor(hours / 24);
+                          const remainingHours = hours % 24;
+                          return days > 0
+                            ? `${days}d ${remainingHours}h`
+                            : `${hours}h`;
+                        })()}
+                      </div>
+                      <div class="stat-secondary">Duration tracked</div>
                     </div>
                   </div>
 
-                  <div class="stat-card">
-                    <h3>🎮 Games</h3>
-                    <div class="big-number">{stats().totalUniqueGames}</div>
-                    <div class="stat-secondary">Total games played</div>
-                  </div>
-
-                  <div class="stat-card">
-                    <h3>🎯 Players</h3>
-                    <div class="big-number">{stats().totalGameSessions}</div>
-                    <div class="stat-secondary">Gaming sessions</div>
-                  </div>
-
-                  <div class="stat-card">
-                    <h3>📅 Event Period</h3>
-                    <div class="big-number">
-                      {(() => {
-                        const hours = stats().eventDurationHours;
-                        const days = Math.floor(hours / 24);
-                        const remainingHours = hours % 24;
-                        return days > 0
-                          ? `${days}d ${remainingHours}h`
-                          : `${hours}h`;
-                      })()}
-                    </div>
-                    <div class="stat-secondary">Duration tracked</div>
-                  </div>
-                </div>
-
-                <Show when={stats().topGames && stats().topGames.length > 0}>
-                  <div class="top-games-section">
-                    <h3>🏆 Top Games</h3>
-                    <div class="game-list">
-                      <For each={stats().topGames.slice(0, 10)}>
-                        {(game, index) => (
-                          <div class="game-item">
-                            <span class="game-rank">
-                              {index() === 0
-                                ? "🥇"
-                                : index() === 1
-                                ? "🥈"
-                                : index() === 2
-                                ? "🥉"
-                                : `#${index() + 1}`}
-                            </span>
-                            <div class="game-info">
-                              <div class="game-name" title={game.game_name}>
-                                {game.game_name}
-                              </div>
-                              <div class="game-stats">
-                                {(() => {
-                                  const minutes = game.total_minutes;
-                                  const hours = Math.floor(minutes / 60);
-                                  const mins = Math.round(minutes % 60);
-                                  if (hours >= 24) {
-                                    const days = Math.floor(hours / 24);
-                                    const remainingHours = hours % 24;
-                                    return days > 0 && remainingHours > 0
-                                      ? `${days}d ${remainingHours}h`
-                                      : `${days}d`;
+                  <Show when={stats().topGames && stats().topGames.length > 0}>
+                    <div class="top-games-section">
+                      <h3>🏆 Top Games</h3>
+                      <div class="game-list">
+                        <For each={stats().topGames.slice(0, 10)}>
+                          {(game, index) => (
+                            <div class="game-item">
+                              <span class="game-rank">
+                                {index() === 0
+                                  ? "🥇"
+                                  : index() === 1
+                                    ? "🥈"
+                                    : index() === 2
+                                      ? "🥉"
+                                      : `#${index() + 1}`}
+                              </span>
+                              <div class="game-info">
+                                <Show
+                                  when={editingGame() === game.game_name}
+                                  fallback={
+                                    <div class="game-name-row">
+                                      <div
+                                        class="game-name"
+                                        title={game.game_name}
+                                      >
+                                        {game.game_name}
+                                      </div>
+                                      <button
+                                        class="game-edit-btn"
+                                        title="Rename this game"
+                                        onClick={() =>
+                                          startEditGame(game.game_name)
+                                        }
+                                      >
+                                        ✏️
+                                      </button>
+                                    </div>
                                   }
-                                  return mins > 0
-                                    ? `${hours}h ${mins}m`
-                                    : `${hours}h`;
-                                })()}{" "}
-                                • {game.unique_players} players
+                                >
+                                  <div class="game-rename-row">
+                                    <input
+                                      class="game-rename-input"
+                                      value={renameValue()}
+                                      onInput={(e) =>
+                                        setRenameValue(e.currentTarget.value)
+                                      }
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter")
+                                          saveRename(game.game_name);
+                                        if (e.key === "Escape")
+                                          cancelEditGame();
+                                      }}
+                                    />
+                                    <button
+                                      class="btn primary small"
+                                      disabled={renameLoading()}
+                                      onClick={() => saveRename(game.game_name)}
+                                    >
+                                      {renameLoading() ? "..." : "Save"}
+                                    </button>
+                                    <button
+                                      class="btn secondary small"
+                                      onClick={cancelEditGame}
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </Show>
+                                <div class="game-stats">
+                                  {(() => {
+                                    const minutes = game.total_minutes;
+                                    const hours = Math.floor(minutes / 60);
+                                    const mins = Math.round(minutes % 60);
+                                    if (hours >= 24) {
+                                      const days = Math.floor(hours / 24);
+                                      const remainingHours = hours % 24;
+                                      return days > 0 && remainingHours > 0
+                                        ? `${days}d ${remainingHours}h`
+                                        : `${days}d`;
+                                    }
+                                    return mins > 0
+                                      ? `${hours}h ${mins}m`
+                                      : `${hours}h`;
+                                  })()}{" "}
+                                  • {game.unique_players} players
+                                </div>
                               </div>
+                            </div>
+                          )}
+                        </For>
+                      </div>
+                    </div>
+                  </Show>
+                </Show>
+
+                {/* Sessions tab */}
+                <Show when={statsView() === "sessions"}>
+                  <div class="sessions-panel">
+                    <Show when={sessionsLoading()}>
+                      <div class="loading">⏳ Loading sessions...</div>
+                    </Show>
+                    <Show when={!sessionsLoading() && sessions().length === 0}>
+                      <div class="empty-state">
+                        No sessions found for this event.
+                      </div>
+                    </Show>
+                    <div class="session-list">
+                      <For each={sessions()}>
+                        {(session) => (
+                          <div
+                            class={`session-item${session.is_removed ? " removed" : ""}`}
+                          >
+                            <div class="session-info">
+                              <div class="session-game">
+                                <span>
+                                  {session.game_name_alias || session.game_name}
+                                </span>
+                                <Show when={session.game_name_alias}>
+                                  <span class="original-name">
+                                    (was: {session.game_name})
+                                  </span>
+                                </Show>
+                                <Show when={session.is_removed}>
+                                  <span class="removed-badge">REMOVED</span>
+                                </Show>
+                              </div>
+                              <div class="session-meta">
+                                {new Date(session.start_time).toLocaleString()}{" "}
+                                {session.duration_minutes != null
+                                  ? `• ${Math.round(session.duration_minutes)}m`
+                                  : session.end_time
+                                    ? ""
+                                    : "• ongoing"}
+                              </div>
+                            </div>
+                            <div class="session-actions">
+                              <button
+                                class={`btn small ${session.is_removed ? "secondary" : "danger"}`}
+                                disabled={toggleLoadingId() === session.id}
+                                onClick={() => toggleRemoved(session)}
+                              >
+                                {toggleLoadingId() === session.id
+                                  ? "..."
+                                  : session.is_removed
+                                    ? "Restore"
+                                    : "Remove"}
+                              </button>
                             </div>
                           </div>
                         )}
@@ -844,7 +1094,7 @@ const EventManager: Component<EventManagerProps> = (props) => {
                           onInput={(e) =>
                             handleEditChange(
                               "description",
-                              e.currentTarget.value
+                              e.currentTarget.value,
                             )
                           }
                           rows={3}
