@@ -11,6 +11,7 @@ Professional Discord bot for monitoring server activity and gaming statistics. F
 ## ✨ Features
 
 - **Multi-Event Management** - Create and manage multiple tracked events with independent configurations
+- **Game Session Management** - Bulk rename game titles and toggle session visibility/inclusion in stats
 - **Real-Time Statistics** - Live member tracking, game activity monitoring, and analytics
 - **Admin Dashboard** - Secure admin interface at `/admin` with event management and statistics
 - **Encrypted Credentials** - AES-256-GCM encryption for Discord bot tokens and sensitive data
@@ -108,13 +109,11 @@ NODE_ENV=development
 ## 🔐 Discord Bot Setup
 
 1. **Create Application**
-
    - Go to [Discord Developer Portal](https://discord.com/developers/applications)
    - Click "New Application"
    - Go to "Bot" section and create bot
 
 2. **Configure Permissions**
-
    - Required scopes: `bot`, `applications.commands`
    - Required permissions:
      - View Channels
@@ -123,7 +122,6 @@ NODE_ENV=development
      - View Guild Insights (for analytics)
 
 3. **Get Credentials**
-
    - Copy bot token to `DISCORD_TOKEN` in `.env`
    - Get your server ID (enable Developer Mode in Discord, right-click server → Copy ID)
    - Add to `DISCORD_GUILD_ID` in `.env`
