@@ -71,7 +71,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
    * Execute multiple queries in a transaction with automatic connection management
    */
   private async transaction<T>(
-    callback: (client: PoolClient) => Promise<T>
+    callback: (client: PoolClient) => Promise<T>,
   ): Promise<T> {
     if (!this.pool) throw new Error("Database not initialized");
 
@@ -138,7 +138,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
 
       console.log("✅ PostgreSQL database initialized successfully");
       console.log(
-        `📊 Connection pool configured: max ${this.pool?.options.max} connections`
+        `📊 Connection pool configured: max ${this.pool?.options.max} connections`,
       );
     } catch (error) {
       console.error("❌ PostgreSQL database initialization failed:", error);
@@ -185,19 +185,19 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
 
       // Create indexes for better query performance
       await client.query(
-        `CREATE INDEX IF NOT EXISTS idx_member_stats_timestamp ON member_stats(timestamp)`
+        `CREATE INDEX IF NOT EXISTS idx_member_stats_timestamp ON member_stats(timestamp)`,
       );
       await client.query(
-        `CREATE INDEX IF NOT EXISTS idx_game_stats_timestamp ON game_stats(timestamp)`
+        `CREATE INDEX IF NOT EXISTS idx_game_stats_timestamp ON game_stats(timestamp)`,
       );
       await client.query(
-        `CREATE INDEX IF NOT EXISTS idx_game_stats_game_name ON game_stats(game_name)`
+        `CREATE INDEX IF NOT EXISTS idx_game_stats_game_name ON game_stats(game_name)`,
       );
       await client.query(
-        `CREATE INDEX IF NOT EXISTS idx_game_sessions_user_id ON game_sessions(user_id)`
+        `CREATE INDEX IF NOT EXISTS idx_game_sessions_user_id ON game_sessions(user_id)`,
       );
       await client.query(
-        `CREATE INDEX IF NOT EXISTS idx_game_sessions_game_name ON game_sessions(game_name)`
+        `CREATE INDEX IF NOT EXISTS idx_game_sessions_game_name ON game_sessions(game_name)`,
       );
     } finally {
       client.release();
@@ -217,7 +217,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       // Try to get the active event for this guild
       const activeResult = await client.query(
         "SELECT id FROM events WHERE guild_id = $1 AND is_active = true LIMIT 1",
-        [guildId]
+        [guildId],
       );
 
       if (activeResult.rows.length > 0) {
@@ -227,7 +227,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       // Fall back to any event for this guild
       const anyResult = await client.query(
         "SELECT id FROM events WHERE guild_id = $1 ORDER BY created_at DESC LIMIT 1",
-        [guildId]
+        [guildId],
       );
 
       if (anyResult.rows.length > 0) {
@@ -242,19 +242,19 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
 
   public async recordMemberStats(
     stats: MemberStats,
-    eventId?: number
+    eventId?: number,
   ): Promise<void> {
     const currentEventId = eventId || (await this.getCurrentEventId());
 
     await this.transaction(async (client) => {
       await client.query(
         "INSERT INTO member_stats (total_members, online_members, event_id) VALUES ($1, $2, $3)",
-        [stats.total_members, stats.online_members, currentEventId]
+        [stats.total_members, stats.online_members, currentEventId],
       );
 
       await client.query(
         "UPDATE events SET updated_at = CURRENT_TIMESTAMP WHERE id = $1",
-        [currentEventId]
+        [currentEventId],
       );
     });
   }
@@ -262,19 +262,19 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
   public async recordMemberCount(
     totalMembers: number,
     onlineMembers: number,
-    eventId?: number
+    eventId?: number,
   ): Promise<void> {
     const currentEventId = eventId || (await this.getCurrentEventId());
 
     await this.transaction(async (client) => {
       await client.query(
         "INSERT INTO member_stats (total_members, online_members, event_id) VALUES ($1, $2, $3)",
-        [totalMembers, onlineMembers, currentEventId]
+        [totalMembers, onlineMembers, currentEventId],
       );
 
       await client.query(
         "UPDATE events SET updated_at = CURRENT_TIMESTAMP WHERE id = $1",
-        [currentEventId]
+        [currentEventId],
       );
     });
   }
@@ -282,13 +282,13 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
   public async recordGameActivity(
     gameName: string,
     playerCount: number,
-    eventId?: number
+    eventId?: number,
   ): Promise<void> {
     const currentEventId = eventId || (await this.getCurrentEventId());
 
     await this.query(
       "INSERT INTO game_stats (game_name, player_count, event_id) VALUES ($1, $2, $3)",
-      [gameName, playerCount, currentEventId]
+      [gameName, playerCount, currentEventId],
     );
   }
 
@@ -296,7 +296,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     userId: string,
     gameName: string,
     action: "start" | "end",
-    eventId?: number
+    eventId?: number,
   ): Promise<void> {
     const currentEventId = eventId || (await this.getCurrentEventId());
 
@@ -307,7 +307,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       // Start new session
       await this.query(
         "INSERT INTO game_sessions (user_id, game_name, event_id) VALUES ($1, $2, $3)",
-        [userId, gameName, currentEventId]
+        [userId, gameName, currentEventId],
       );
     } else if (action === "end") {
       await this.endActiveGameSession(userId, gameName);
@@ -316,7 +316,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
 
   private async endActiveGameSession(
     userId: string,
-    gameName: string
+    gameName: string,
   ): Promise<void> {
     await this.query(
       `
@@ -325,14 +325,14 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
                 duration_minutes = EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - start_time))/60
             WHERE user_id = $1 AND game_name = $2 AND end_time IS NULL
         `,
-      [userId, gameName]
+      [userId, gameName],
     );
   }
 
   public async getMemberStatsInRange(
     startDate: string,
     endDate: string,
-    eventId?: number
+    eventId?: number,
   ): Promise<MemberStats[]> {
     let query = `
             SELECT timestamp, total_members, online_members, event_id
@@ -361,7 +361,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
   public async getGameStatsInRange(
     startDate: string,
     endDate: string,
-    eventId?: number
+    eventId?: number,
   ): Promise<GameStats[]> {
     let query = `
             SELECT timestamp, game_name, player_count, event_id
@@ -390,12 +390,13 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
   public async getGameSessionsInRange(
     startDate: string,
     endDate: string,
-    eventId?: number
+    eventId?: number,
   ): Promise<GameSession[]> {
     let query = `
-            SELECT id, user_id, game_name, start_time, end_time, duration_minutes
+            SELECT id, user_id, game_name, game_name_alias, is_removed, start_time, end_time, duration_minutes
             FROM game_sessions
             WHERE start_time BETWEEN $1 AND $2
+              AND is_removed = FALSE
         `;
     let params: any[] = [startDate, endDate];
 
@@ -412,6 +413,8 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       id: row.id,
       user_id: row.user_id,
       game_name: row.game_name,
+      game_name_alias: row.game_name_alias ?? null,
+      is_removed: row.is_removed,
       start_time: row.start_time.toISOString(),
       end_time: row.end_time ? row.end_time.toISOString() : undefined,
       duration_minutes: row.duration_minutes,
@@ -422,7 +425,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     startDate: string,
     endDate: string,
     limit: number = 10,
-    eventId?: number
+    eventId?: number,
   ): Promise<
     {
       game_name: string;
@@ -436,8 +439,8 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
 
     // Build query with optional event_id filter to ensure data isolation between events/servers
     const whereClause = eventId
-      ? "WHERE start_time BETWEEN $1 AND $2 AND event_id = $4"
-      : "WHERE start_time BETWEEN $1 AND $2";
+      ? "WHERE start_time BETWEEN $1 AND $2 AND event_id = $4 AND is_removed = FALSE"
+      : "WHERE start_time BETWEEN $1 AND $2 AND is_removed = FALSE";
 
     const params = eventId
       ? [startDate, endDate, limit, eventId]
@@ -445,18 +448,18 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
 
     const result = await this.client.query(
       `
-            SELECT 
-                game_name,
+            SELECT
+                COALESCE(game_name_alias, game_name) AS game_name,
                 COUNT(*) as total_sessions,
                 COALESCE(ROUND(SUM(
-                    CASE 
+                    CASE
                         WHEN duration_minutes IS NOT NULL THEN duration_minutes
                         WHEN end_time IS NULL THEN EXTRACT(EPOCH FROM (NOW() - start_time)) / 60
                         ELSE 0
                     END
                 )::numeric, 2), 0) as total_minutes,
                 COALESCE(ROUND(AVG(
-                    CASE 
+                    CASE
                         WHEN duration_minutes IS NOT NULL THEN duration_minutes
                         WHEN end_time IS NULL THEN EXTRACT(EPOCH FROM (NOW() - start_time)) / 60
                         ELSE 0
@@ -465,11 +468,11 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
                 COUNT(DISTINCT user_id) as unique_players
             FROM game_sessions
             ${whereClause}
-            GROUP BY game_name
+            GROUP BY COALESCE(game_name_alias, game_name)
             ORDER BY total_minutes DESC, total_sessions DESC
             LIMIT $3
         `,
-      params
+      params,
     );
 
     return result.rows.map((row) => ({
@@ -484,7 +487,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
   public async getUserActivity(
     startDate: string,
     endDate: string,
-    eventId?: number
+    eventId?: number,
   ): Promise<
     {
       user_id: string;
@@ -525,7 +528,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             
             ORDER BY timestamp ASC
         `,
-      [startDate, endDate, currentEventId]
+      [startDate, endDate, currentEventId],
     );
 
     return result.rows.map((row) => ({
@@ -574,17 +577,17 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
 
     // Get current games from active sessions for this event
     const sessionsQuery = eventId
-      ? `SELECT game_name, 
+      ? `SELECT game_name,
                COUNT(DISTINCT user_id) as player_count
         FROM game_sessions
-        WHERE end_time IS NULL AND event_id = $1
+        WHERE end_time IS NULL AND event_id = $1 AND is_removed = FALSE
         GROUP BY game_name
         HAVING COUNT(DISTINCT user_id) > 0
         ORDER BY COUNT(DISTINCT user_id) DESC`
-      : `SELECT game_name, 
+      : `SELECT game_name,
                COUNT(DISTINCT user_id) as player_count
         FROM game_sessions
-        WHERE end_time IS NULL
+        WHERE end_time IS NULL AND is_removed = FALSE
         GROUP BY game_name
         HAVING COUNT(DISTINCT user_id) > 0
         ORDER BY COUNT(DISTINCT user_id) DESC`;
@@ -648,7 +651,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
   }
 
   public async getActiveSessions(
-    eventId?: number
+    eventId?: number,
   ): Promise<{ user_id: string; game_name: string; start_time: string }[]> {
     if (!this.client) throw new Error("Database not initialized");
 
@@ -699,7 +702,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
         name: event.name,
         discordGuildId: discordGuildId,
         tokenSanitized: CredentialEncryption.sanitizeTokenForLogging(
-          event.discordToken
+          event.discordToken,
         ),
       });
     }
@@ -731,7 +734,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
         encryptedToken,
         discordGuildId,
         isActive,
-      ]
+      ],
     );
 
     const createdEvent = result.rows[0];
@@ -740,7 +743,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     if (createdEvent.discord_token) {
       try {
         createdEvent.discordToken = CredentialEncryption.decrypt(
-          createdEvent.discord_token
+          createdEvent.discord_token,
         );
         createdEvent.discordGuildId = createdEvent.discord_guild_id;
         // Remove the encrypted version from the returned object
@@ -749,7 +752,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       } catch (error) {
         console.error(
           "⚠️  Failed to decrypt Discord token after creation:",
-          error
+          error,
         );
         // Remove encrypted fields if decryption fails
         delete createdEvent.discord_token;
@@ -767,7 +770,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             WHERE guild_id = $1 
             ORDER BY created_at DESC
         `,
-      [guildId]
+      [guildId],
     );
 
     // Decrypt Discord tokens and transform field names
@@ -777,14 +780,14 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       if (event.discord_token) {
         try {
           transformedEvent.discordToken = CredentialEncryption.decrypt(
-            event.discord_token
+            event.discord_token,
           );
           transformedEvent.discordGuildId = event.discord_guild_id;
         } catch (error) {
           console.error(
             "⚠️  Failed to decrypt Discord token for event:",
             event.id,
-            error
+            error,
           );
           // Set to null if decryption fails
           transformedEvent.discordToken = null;
@@ -806,7 +809,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             SELECT * FROM events 
             WHERE id = $1
         `,
-      [id]
+      [id],
     );
 
     const event = result.rows[0];
@@ -821,7 +824,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
         console.error(
           "⚠️  Failed to decrypt Discord token for event:",
           event.id,
-          error
+          error,
         );
         event.discordToken = null;
         event.discordGuildId = null;
@@ -850,7 +853,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             WHERE guild_id = $1 AND is_active = true 
             LIMIT 1
         `,
-      [guildId]
+      [guildId],
     );
 
     const event = result.rows[0];
@@ -865,7 +868,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
         console.error(
           "⚠️  Failed to decrypt Discord token for active event:",
           event.id,
-          error
+          error,
         );
         event.discordToken = null;
         event.discordGuildId = null;
@@ -914,7 +917,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
         }
 
         processedUpdates.discord_token = CredentialEncryption.encrypt(
-          updates.discordToken
+          updates.discordToken,
         );
         processedUpdates.discord_guild_id = updates.discordGuildId;
 
@@ -922,7 +925,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
           eventId: id,
           discordGuildId: updates.discordGuildId,
           tokenSanitized: CredentialEncryption.sanitizeTokenForLogging(
-            updates.discordToken
+            updates.discordToken,
           ),
         });
       } else if (
@@ -981,7 +984,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             WHERE id = $${paramIndex}
             RETURNING *
         `,
-      values
+      values,
     );
 
     const updatedEvent = result.rows[0];
@@ -991,13 +994,13 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     if (updatedEvent.discord_token) {
       try {
         updatedEvent.discordToken = CredentialEncryption.decrypt(
-          updatedEvent.discord_token
+          updatedEvent.discord_token,
         );
         updatedEvent.discordGuildId = updatedEvent.discord_guild_id;
       } catch (error) {
         console.error(
           "⚠️  Failed to decrypt Discord token after update:",
-          error
+          error,
         );
         updatedEvent.discordToken = null;
         updatedEvent.discordGuildId = null;
@@ -1021,7 +1024,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             SET is_active = false, updated_at = CURRENT_TIMESTAMP
             WHERE guild_id = $1
         `,
-      [guildId]
+      [guildId],
     );
 
     // Then activate the specified event
@@ -1031,7 +1034,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             SET is_active = true, updated_at = CURRENT_TIMESTAMP
             WHERE id = $1 AND guild_id = $2
         `,
-      [eventId, guildId]
+      [eventId, guildId],
     );
   }
 
@@ -1042,7 +1045,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       // Check if the event exists and if it's currently active
       const eventResult = await this.client.query(
         `SELECT * FROM events WHERE id = $1`,
-        [eventId]
+        [eventId],
       );
 
       if (eventResult.rows.length === 0) {
@@ -1054,7 +1057,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       // Prevent deletion of active events
       if (event.is_active) {
         throw new Error(
-          "Cannot delete an active event. Deactivate it first by activating another event."
+          "Cannot delete an active event. Deactivate it first by activating another event.",
         );
       }
 
@@ -1076,7 +1079,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     // Get event info first
     const eventResult = await this.client.query(
       `SELECT * FROM events WHERE id = $1`,
-      [eventId]
+      [eventId],
     );
 
     if (!eventResult.rows[0]) return null;
@@ -1086,16 +1089,17 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     // Filter by both event_id AND date range to ensure accuracy
     const gameStatsResult = await this.client.query(
       `
-            SELECT 
+            SELECT
                 COUNT(id) as game_session_count,
-                COUNT(DISTINCT game_name) as unique_games_count,
+                COUNT(DISTINCT COALESCE(game_name_alias, game_name)) as unique_games_count,
                 COALESCE(SUM(duration_minutes), 0) as total_minutes
             FROM game_sessions
             WHERE event_id = $1
               AND start_time >= $2::timestamptz
               AND start_time <= $3::timestamptz
+              AND is_removed = FALSE
         `,
-      [eventId, event.start_date, event.end_date]
+      [eventId, event.start_date, event.end_date],
     );
 
     const gameStats = gameStatsResult.rows[0];
@@ -1109,7 +1113,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
               AND timestamp >= $2::timestamptz
               AND timestamp <= $3::timestamptz
         `,
-      [eventId, event.start_date, event.end_date]
+      [eventId, event.start_date, event.end_date],
     );
 
     // Use the higher count between game_sessions and game_stats
@@ -1118,7 +1122,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       parseInt(gameStatsAltResult.rows[0].unique_games_alt) || 0;
     const totalUniqueGames = Math.max(
       uniqueGamesFromSessions,
-      uniqueGamesFromStats
+      uniqueGamesFromStats,
     );
 
     // Get member stats (optimized with single table query)
@@ -1131,7 +1135,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             FROM member_stats
             WHERE event_id = $1
         `,
-      [eventId]
+      [eventId],
     );
 
     const memberStats = memberStatsResult.rows[0];
@@ -1150,18 +1154,18 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
               AND timestamp >= $3::timestamptz
               AND timestamp <= $2::timestamptz
         `,
-      [eventId, event.end_date, event.start_date]
+      [eventId, event.end_date, event.start_date],
     );
     const eventDurationHours = Math.round(
-      parseFloat(durationResult.rows[0]?.duration_hours) || 0
+      parseFloat(durationResult.rows[0]?.duration_hours) || 0,
     );
 
     // Get ALL top games information (not just top 1)
     // Filter by date range to ensure we only count games played during the event
     const topGamesResult = await this.client.query(
       `
-            SELECT 
-                game_name,
+            SELECT
+                COALESCE(game_name_alias, game_name) AS game_name,
                 COUNT(DISTINCT user_id) as unique_players,
                 COUNT(id) as total_sessions,
                 COALESCE(SUM(duration_minutes), 0) as total_minutes
@@ -1169,10 +1173,11 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
             WHERE event_id = $1
               AND start_time >= $2::timestamptz
               AND start_time <= $3::timestamptz
-            GROUP BY game_name
+              AND is_removed = FALSE
+            GROUP BY COALESCE(game_name_alias, game_name)
             ORDER BY total_minutes DESC, total_sessions DESC
         `,
-      [eventId, event.start_date, event.end_date]
+      [eventId, event.start_date, event.end_date],
     );
 
     // Transform to match the frontend format
@@ -1186,19 +1191,20 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     // Get top game information (optimized query) - keep for backward compatibility
     const topGameResult = await this.client.query(
       `
-            SELECT 
-                game_name as name,
+            SELECT
+                COALESCE(game_name_alias, game_name) AS name,
                 COUNT(DISTINCT user_id) as total_players,
                 COUNT(id) as session_count
             FROM game_sessions
             WHERE event_id = $1
               AND start_time >= $2::timestamptz
               AND start_time <= $3::timestamptz
-            GROUP BY game_name
+              AND is_removed = FALSE
+            GROUP BY COALESCE(game_name_alias, game_name)
             ORDER BY session_count DESC, total_players DESC
             LIMIT 1
         `,
-      [eventId, event.start_date, event.end_date]
+      [eventId, event.start_date, event.end_date],
     );
 
     // Get peak players for top game (if exists)
@@ -1214,7 +1220,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
                   AND timestamp >= $3::timestamptz
                   AND timestamp <= $4::timestamptz
             `,
-        [eventId, topGameName, event.start_date, event.end_date]
+        [eventId, topGameName, event.start_date, event.end_date],
       );
 
       topGame = {
@@ -1234,7 +1240,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       peakTotalMembers: parseInt(memberStats.peak_total_members) || 0,
       averageOnlineMembers: parseFloat(memberStats.avg_online_members) || 0,
       totalActiveHours: Math.round(
-        (parseFloat(gameStats.total_minutes) || 0) / 60
+        (parseFloat(gameStats.total_minutes) || 0) / 60,
       ),
       eventDurationHours,
       topGames,
@@ -1262,15 +1268,89 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
                 COUNT(gss.id) as total_sessions,
                 COALESCE(SUM(gss.duration_minutes), 0) as total_minutes
             FROM events e
-            LEFT JOIN game_sessions gss ON gss.event_id = e.id
+            LEFT JOIN game_sessions gss ON gss.event_id = e.id AND gss.is_removed = FALSE
             WHERE e.guild_id = $1
             GROUP BY e.id, e.name, e.description, e.start_date, e.end_date, e.timezone, e.is_active, e.is_hidden, e.created_at
             ORDER BY e.created_at DESC
         `,
-      [guildId]
+      [guildId],
     );
 
     return result.rows;
+  }
+
+  public async getEventSessions(eventId: number): Promise<GameSession[]> {
+    const result = await this.query(
+      `
+            SELECT id, user_id, game_name, game_name_alias, is_removed,
+                   start_time, end_time, duration_minutes, event_id
+            FROM game_sessions
+            WHERE event_id = $1
+            ORDER BY start_time DESC
+        `,
+      [eventId],
+    );
+
+    return result.rows.map((row: any) => ({
+      id: row.id,
+      user_id: row.user_id,
+      game_name: row.game_name,
+      game_name_alias: row.game_name_alias ?? null,
+      is_removed: row.is_removed,
+      start_time: row.start_time.toISOString(),
+      end_time: row.end_time ? row.end_time.toISOString() : undefined,
+      duration_minutes: row.duration_minutes,
+      event_id: row.event_id,
+    }));
+  }
+
+  public async bulkRenameGame(
+    eventId: number,
+    oldName: string,
+    newName: string,
+  ): Promise<number> {
+    const result = await this.query(
+      `
+            UPDATE game_sessions
+            SET game_name_alias = $3
+            WHERE event_id = $1
+              AND COALESCE(game_name_alias, game_name) = $2
+        `,
+      [eventId, oldName, newName],
+    );
+
+    return result.rowCount ?? 0;
+  }
+
+  public async toggleSessionRemoved(
+    sessionId: number,
+    isRemoved: boolean,
+  ): Promise<GameSession> {
+    const result = await this.query(
+      `
+            UPDATE game_sessions
+            SET is_removed = $1
+            WHERE id = $2
+            RETURNING id, user_id, game_name, game_name_alias, is_removed,
+                      start_time, end_time, duration_minutes, event_id
+        `,
+      [isRemoved, sessionId],
+    );
+
+    if (!result.rows[0]) throw new Error(`Session ${sessionId} not found`);
+
+    const row = result.rows[0];
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      game_name: row.game_name,
+      game_name_alias: row.game_name_alias ?? null,
+      is_removed: row.is_removed,
+      start_time: row.start_time.toISOString(),
+      end_time: row.end_time ? row.end_time.toISOString() : undefined,
+      duration_minutes: row.duration_minutes,
+      event_id: row.event_id,
+    };
   }
 
   public async close(): Promise<void> {

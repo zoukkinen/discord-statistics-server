@@ -18,6 +18,8 @@ export interface GameSession {
   id: number;
   user_id: string;
   game_name: string;
+  game_name_alias?: string | null;
+  is_removed: boolean;
   start_time: string;
   end_time?: string;
   duration_minutes?: number;
@@ -30,7 +32,7 @@ export interface DatabaseAdapter {
 
   // Event management
   createEvent(
-    event: Omit<Event, "id" | "createdAt" | "updatedAt">
+    event: Omit<Event, "id" | "createdAt" | "updatedAt">,
   ): Promise<Event>;
   getEvent(id: number): Promise<Event | null>;
   getEvents(guildId: string): Promise<Event[]>;
@@ -45,30 +47,30 @@ export interface DatabaseAdapter {
   recordMemberCount(
     totalMembers: number,
     onlineMembers: number,
-    eventId?: number
+    eventId?: number,
   ): Promise<void>;
   getMemberStatsInRange(
     startDate: string,
     endDate: string,
-    eventId?: number
+    eventId?: number,
   ): Promise<MemberStats[]>;
 
   // Game statistics (event-aware)
   recordGameActivity(
     gameName: string,
     playerCount: number,
-    eventId?: number
+    eventId?: number,
   ): Promise<void>;
   getGameStatsInRange(
     startDate: string,
     endDate: string,
-    eventId?: number
+    eventId?: number,
   ): Promise<GameStats[]>;
   getTopGamesInRange(
     startDate: string,
     endDate: string,
     limit?: number,
-    eventId?: number
+    eventId?: number,
   ): Promise<
     {
       game_name: string;
@@ -84,22 +86,30 @@ export interface DatabaseAdapter {
     userId: string,
     gameName: string,
     action: "start" | "end",
-    eventId?: number
+    eventId?: number,
   ): Promise<void>;
   getGameSessionsInRange(
     startDate: string,
     endDate: string,
-    eventId?: number
+    eventId?: number,
   ): Promise<GameSession[]>;
   getActiveSessions(
-    eventId?: number
+    eventId?: number,
   ): Promise<{ user_id: string; game_name: string; start_time: string }[]>;
   cleanupStaleGameSessions(): Promise<void>;
+  getEventSessions(eventId: number): Promise<GameSession[]>;
+  bulkRenameGame(
+    eventId: number,
+    oldName: string,
+    newName: string,
+  ): Promise<number>;
+  toggleSessionRemoved(
+    sessionId: number,
+    isRemoved: boolean,
+  ): Promise<GameSession>;
 
   // Current stats (event-aware)
-  getCurrentStats(
-    eventId?: number
-  ): Promise<{
+  getCurrentStats(eventId?: number): Promise<{
     memberStats: MemberStats | null;
     currentGames: { game_name: string; player_count: number }[];
   }>;
@@ -108,7 +118,7 @@ export interface DatabaseAdapter {
   getUserActivity(
     startDate: string,
     endDate: string,
-    eventId?: number
+    eventId?: number,
   ): Promise<
     {
       user_id: string;

@@ -37,11 +37,11 @@ export class WebServer {
     // Serve PWA files from public root (both dev and prod need these)
     this.app.use(
       "/sw.js",
-      express.static(path.join(__dirname, "../public/sw.js"))
+      express.static(path.join(__dirname, "../public/sw.js")),
     );
     this.app.use(
       "/manifest.json",
-      express.static(path.join(__dirname, "../public/manifest.json"))
+      express.static(path.join(__dirname, "../public/manifest.json")),
     );
 
     // Serve static files from the SolidJS build output
@@ -153,7 +153,7 @@ export class WebServer {
         if (password === adminPassword) {
           // Generate a simple session token (you could use JWT for better security)
           const sessionToken = Buffer.from(`admin:${Date.now()}`).toString(
-            "base64"
+            "base64",
           );
           const expiresIn = 3600; // 1 hour in seconds
           res.json({
@@ -256,7 +256,7 @@ export class WebServer {
         if (!start || !end) {
           const now = new Date();
           const sevenDaysAgo = new Date(
-            now.getTime() - 7 * 24 * 60 * 60 * 1000
+            now.getTime() - 7 * 24 * 60 * 60 * 1000,
           );
           start = sevenDaysAgo.toISOString();
           end = now.toISOString();
@@ -265,7 +265,7 @@ export class WebServer {
         const history = await this.database.getMemberStatsInRange(
           start,
           end,
-          eventId
+          eventId,
         );
         res.json(history);
       } catch (error) {
@@ -286,7 +286,7 @@ export class WebServer {
         if (!start || !end) {
           const now = new Date();
           const sevenDaysAgo = new Date(
-            now.getTime() - 7 * 24 * 60 * 60 * 1000
+            now.getTime() - 7 * 24 * 60 * 60 * 1000,
           );
           start = sevenDaysAgo.toISOString();
           end = now.toISOString();
@@ -295,7 +295,7 @@ export class WebServer {
         const history = await this.database.getGameStatsInRange(
           start,
           end,
-          eventId
+          eventId,
         );
         res.json(history);
       } catch (error) {
@@ -319,7 +319,7 @@ export class WebServer {
           start,
           end,
           limit,
-          eventId
+          eventId,
         );
         res.json(topGames);
       } catch (error) {
@@ -357,12 +357,12 @@ export class WebServer {
           const hours = parseInt(req.query.hours as string) || 24;
           const endDate = new Date().toISOString();
           const startDate = new Date(
-            Date.now() - hours * 60 * 60 * 1000
+            Date.now() - hours * 60 * 60 * 1000,
           ).toISOString();
           const history = await this.database.getMemberStatsInRange(
             startDate,
             endDate,
-            activeEvent?.id
+            activeEvent?.id,
           );
           res.json(history);
         }
@@ -382,12 +382,12 @@ export class WebServer {
         const hours = parseInt(req.query.hours as string) || 24;
         const endDate = new Date().toISOString();
         const startDate = new Date(
-          Date.now() - hours * 60 * 60 * 1000
+          Date.now() - hours * 60 * 60 * 1000,
         ).toISOString();
         const history = await this.database.getGameStatsInRange(
           startDate,
           endDate,
-          activeEvent?.id
+          activeEvent?.id,
         );
         res.json(history);
       } catch (error) {
@@ -407,7 +407,7 @@ export class WebServer {
           const topGames = await this.database.getTopGamesInRange(
             start,
             end,
-            limit
+            limit,
           );
           res.json(topGames);
         } else {
@@ -429,7 +429,7 @@ export class WebServer {
               eventStart,
               eventEnd,
               limit,
-              activeEvent.id
+              activeEvent.id,
             );
             res.json(topGames);
           } else {
@@ -439,7 +439,7 @@ export class WebServer {
             const topGames = await this.database.getTopGamesInRange(
               eventStart,
               eventEnd,
-              limit
+              limit,
             );
             res.json(topGames);
           }
@@ -456,11 +456,11 @@ export class WebServer {
         // Get activity from last 24 hours
         const endDate = new Date().toISOString();
         const startDate = new Date(
-          Date.now() - 24 * 60 * 60 * 1000
+          Date.now() - 24 * 60 * 60 * 1000,
         ).toISOString();
         const activity = await this.database.getUserActivity(
           startDate,
-          endDate
+          endDate,
         );
 
         // Apply limit if specified (get most recent entries)
@@ -506,7 +506,7 @@ export class WebServer {
           : events.filter((event) => !event.isHidden);
 
         const transformedEvents = filteredEvents.map((event) =>
-          this.transformEventToCamelCase(event)
+          this.transformEventToCamelCase(event),
         );
         res.json(transformedEvents);
       } catch (error) {
@@ -559,7 +559,7 @@ export class WebServer {
           : summaries.filter((summary) => !summary.isHidden);
 
         const transformedSummaries = filteredSummaries.map((summary) =>
-          this.transformEventSummaryToCamelCase(summary)
+          this.transformEventSummaryToCamelCase(summary),
         );
         res.json(transformedSummaries);
       } catch (error) {
@@ -620,9 +620,8 @@ export class WebServer {
 
           // Validate Discord credentials if provided
           if (discordToken || discordGuildId) {
-            const { CredentialEncryption } = await import(
-              "./utils/credentialEncryption"
-            );
+            const { CredentialEncryption } =
+              await import("./utils/credentialEncryption");
 
             if (
               discordToken &&
@@ -676,14 +675,14 @@ export class WebServer {
           const newEvent = await this.database.createEvent(eventData);
 
           console.log(
-            `📅 New event created: "${newEvent.name}" (ID: ${newEvent.id})`
+            `📅 New event created: "${newEvent.name}" (ID: ${newEvent.id})`,
           );
           res.status(201).json(newEvent);
         } catch (error) {
           console.error("Error creating event:", error);
           res.status(500).json({ error: "Failed to create event" });
         }
-      }
+      },
     );
 
     // Update event
@@ -738,14 +737,14 @@ export class WebServer {
           }
 
           console.log(
-            `📅 Event updated: "${updatedEvent.name}" (ID: ${eventId})`
+            `📅 Event updated: "${updatedEvent.name}" (ID: ${eventId})`,
           );
           res.json(updatedEvent);
         } catch (error) {
           console.error("Error updating event:", error);
           res.status(500).json({ error: "Failed to update event" });
         }
-      }
+      },
     );
 
     // Set active event
@@ -782,14 +781,14 @@ export class WebServer {
           }
 
           console.log(
-            `🎯 Event activated: "${activeEvent.name}" (ID: ${eventId})`
+            `🎯 Event activated: "${activeEvent.name}" (ID: ${eventId})`,
           );
           res.json(activeEvent);
         } catch (error) {
           console.error("Error activating event:", error);
           res.status(500).json({ error: "Failed to activate event" });
         }
-      }
+      },
     );
 
     // Delete event
@@ -836,7 +835,7 @@ export class WebServer {
             error: errorMessage || "Failed to delete event",
           });
         }
-      }
+      },
     );
 
     // Get statistics for a specific event
@@ -859,6 +858,95 @@ export class WebServer {
         res.status(500).json({ error: "Failed to fetch event stats" });
       }
     });
+
+    // Get all sessions for an event (admin only)
+    this.app.get(
+      "/api/events/:id/sessions",
+      this.authenticateAdmin.bind(this),
+      async (req, res) => {
+        try {
+          const eventId = parseInt(req.params.id);
+          if (isNaN(eventId)) {
+            return res.status(400).json({ error: "Invalid event ID" });
+          }
+
+          const sessions = await this.database.getEventSessions(eventId);
+          res.json(sessions);
+        } catch (error) {
+          console.error("Error fetching event sessions:", error);
+          res.status(500).json({ error: "Failed to fetch sessions" });
+        }
+      },
+    );
+
+    // Bulk rename a game across all sessions in an event (admin only)
+    this.app.post(
+      "/api/events/:id/rename-game",
+      this.authenticateAdmin.bind(this),
+      async (req, res) => {
+        try {
+          const eventId = parseInt(req.params.id);
+          if (isNaN(eventId)) {
+            return res.status(400).json({ error: "Invalid event ID" });
+          }
+
+          const { oldName, newName } = req.body;
+
+          if (!oldName || !newName) {
+            return res
+              .status(400)
+              .json({ error: "oldName and newName are required" });
+          }
+
+          const trimmedNew = String(newName).trim();
+          if (!trimmedNew) {
+            return res.status(400).json({ error: "newName cannot be empty" });
+          }
+
+          const count = await this.database.bulkRenameGame(
+            eventId,
+            String(oldName),
+            trimmedNew,
+          );
+
+          res.json({ updated: count, oldName, newName: trimmedNew });
+        } catch (error) {
+          console.error("Error renaming game:", error);
+          res.status(500).json({ error: "Failed to rename game" });
+        }
+      },
+    );
+
+    // Toggle is_removed on a single session (admin only)
+    this.app.patch(
+      "/api/events/:id/sessions/:sessionId",
+      this.authenticateAdmin.bind(this),
+      async (req, res) => {
+        try {
+          const sessionId = parseInt(req.params.sessionId);
+          if (isNaN(sessionId)) {
+            return res.status(400).json({ error: "Invalid session ID" });
+          }
+
+          const { isRemoved } = req.body;
+
+          if (typeof isRemoved !== "boolean") {
+            return res
+              .status(400)
+              .json({ error: "isRemoved must be a boolean" });
+          }
+
+          const session = await this.database.toggleSessionRemoved(
+            sessionId,
+            isRemoved,
+          );
+          res.json(session);
+        } catch (error) {
+          console.error("Error toggling session removed:", error);
+          res.status(500).json({ error: "Failed to update session" });
+        }
+      },
+    );
 
     // Event configuration endpoint
     this.app.get("/api/config", async (req, res) => {

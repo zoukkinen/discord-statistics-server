@@ -26,6 +26,9 @@ export class MigrationRunner {
     // Run migration 003 - Add is_hidden field
     await this.runMigration003();
 
+    // Run migration 004 - Add session management fields
+    await this.runMigration004();
+
     console.log("✅ All migrations completed successfully");
   }
 
@@ -45,7 +48,7 @@ export class MigrationRunner {
     // Check if migration already executed
     const existingMigration = await this.client.query(
       "SELECT id FROM migrations WHERE migration_name = $1",
-      [migrationName]
+      [migrationName],
     );
 
     if (existingMigration.rows.length > 0) {
@@ -60,7 +63,7 @@ export class MigrationRunner {
       const migrationPath = join(
         __dirname,
         "migrations",
-        "001_add_events_table.sql"
+        "001_add_events_table.sql",
       );
       const migrationSQL = readFileSync(migrationPath, "utf8");
 
@@ -82,7 +85,7 @@ export class MigrationRunner {
         `
                 SELECT migrate_existing_data_to_events($1, $2, $3, $4, $5, $6) as event_id
             `,
-        [this.guildId, eventName, startDate, endDate, timezone, description]
+        [this.guildId, eventName, startDate, endDate, timezone, description],
       );
 
       const eventId = result.rows[0]?.event_id;
@@ -95,7 +98,7 @@ export class MigrationRunner {
       // Record successful migration
       await this.client.query(
         "INSERT INTO migrations (migration_name) VALUES ($1)",
-        [migrationName]
+        [migrationName],
       );
 
       console.log(`✅ Migration ${migrationName} completed successfully`);
@@ -111,7 +114,7 @@ export class MigrationRunner {
     // Check if migration already executed
     const existingMigration = await this.client.query(
       "SELECT id FROM migrations WHERE migration_name = $1",
-      [migrationName]
+      [migrationName],
     );
 
     if (existingMigration.rows.length > 0) {
@@ -126,7 +129,7 @@ export class MigrationRunner {
       const migrationPath = join(
         __dirname,
         "migrations",
-        "002_add_discord_credentials.sql"
+        "002_add_discord_credentials.sql",
       );
       const migrationSQL = readFileSync(migrationPath, "utf8");
 
@@ -136,7 +139,7 @@ export class MigrationRunner {
       // Record successful migration
       await this.client.query(
         "INSERT INTO migrations (migration_name) VALUES ($1)",
-        [migrationName]
+        [migrationName],
       );
 
       console.log(`✅ Migration ${migrationName} completed successfully`);
@@ -153,7 +156,7 @@ export class MigrationRunner {
     // Check if migration already executed
     const existingMigration = await this.client.query(
       "SELECT id FROM migrations WHERE migration_name = $1",
-      [migrationName]
+      [migrationName],
     );
 
     if (existingMigration.rows.length > 0) {
@@ -168,7 +171,7 @@ export class MigrationRunner {
       const migrationPath = join(
         __dirname,
         "migrations",
-        "003_add_is_hidden_field.sql"
+        "003_add_is_hidden_field.sql",
       );
       const migrationSQL = readFileSync(migrationPath, "utf8");
 
@@ -178,11 +181,51 @@ export class MigrationRunner {
       // Record successful migration
       await this.client.query(
         "INSERT INTO migrations (migration_name) VALUES ($1)",
-        [migrationName]
+        [migrationName],
       );
 
       console.log(`✅ Migration ${migrationName} completed successfully`);
       console.log(`👁️  is_hidden field added to events table`);
+    } catch (error) {
+      console.error(`❌ Migration ${migrationName} failed:`, error);
+      throw error;
+    }
+  }
+
+  private async runMigration004(): Promise<void> {
+    const migrationName = "004_add_session_management_fields";
+
+    const existingMigration = await this.client.query(
+      "SELECT id FROM migrations WHERE migration_name = $1",
+      [migrationName],
+    );
+
+    if (existingMigration.rows.length > 0) {
+      console.log(`⏭️  Migration ${migrationName} already executed, skipping`);
+      return;
+    }
+
+    try {
+      console.log(`🔄 Running migration: ${migrationName}`);
+
+      const migrationPath = join(
+        __dirname,
+        "migrations",
+        "004_add_session_management_fields.sql",
+      );
+      const migrationSQL = readFileSync(migrationPath, "utf8");
+
+      await this.client.query(migrationSQL);
+
+      await this.client.query(
+        "INSERT INTO migrations (migration_name) VALUES ($1)",
+        [migrationName],
+      );
+
+      console.log(`✅ Migration ${migrationName} completed successfully`);
+      console.log(
+        `🗂️  game_name_alias and is_removed fields added to game_sessions`,
+      );
     } catch (error) {
       console.error(`❌ Migration ${migrationName} failed:`, error);
       throw error;
