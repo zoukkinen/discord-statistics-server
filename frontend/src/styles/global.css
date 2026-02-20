@@ -292,78 +292,182 @@ body::before {
 
 /* Responsive Design & Tablet Optimization */
 @media screen and (max-width: 1180px) {
+  body {
+    padding: 4px !important;
+  }
+
   .app {
-    padding: 8px;
+    padding: 4px;
     max-width: 100%;
   }
 
   .main-content {
-    padding: 10px 0;
-    margin-top: 5px;
+    padding: 2px 0;
+    margin-top: 0;
   }
 
-  /* Compact header for tablets */
+  /* Shaved off vertical space for landscape */
   .header {
-    padding: 10px 15px;
-    margin-bottom: 8px;
+    padding: 6px 12px !important;
+    margin-bottom: 5px !important;
+    border-radius: 6px !important;
   }
 
   .main-title {
-    font-size: 1.5em;
-    margin-bottom: 4px;
+    font-size: 1.25em !important;
+    margin-bottom: 2px !important;
+    gap: 5px !important;
   }
 
   .subtitle {
-    margin-bottom: 2px;
+    margin-bottom: 0px;
+    font-size: 0.75em;
+    gap: 8px !important;
   }
 
-  /* Compact stats for tablets */
+  .emoji {
+    font-size: 1em !important;
+  }
+
+  .event-dates {
+    font-size: 0.7em !important;
+    margin-top: 1px !important;
+  }
+
+  /* Compact stats for tablets - forced single row */
   .stats-grid {
     grid-template-columns: repeat(4, 1fr) !important;
-    gap: 8px !important;
-    margin-bottom: 8px !important;
+    gap: 5px !important;
+    margin-bottom: 5px !important;
   }
 
   .stat-card {
-    padding: 6px;
+    padding: 4px !important;
+    border-radius: 6px !important;
   }
 
   .stat-card h3 {
-    font-size: 0.75em;
-    margin-bottom: 2px;
+    font-size: 0.65em !important;
+    margin-bottom: 0 !important;
   }
 
   .big-number {
-    font-size: 1.3em;
+    font-size: 1.15em !important;
+    margin: 0 !important;
   }
 
-  /* Reduce height of charts and items in landscape to fit more content */
+  /* Ultra-compact charts and items */
   .chart-wrapper {
-    height: 220px !important;
+    height: 160px !important; /* Shrunk from 180px */
+  }
+
+  .chart-container {
+    padding: 8px !important;
+    border-radius: 8px !important;
+  }
+
+  .chart-container h3 {
+    font-size: 0.85em !important;
+    margin-bottom: 4px !important;
   }
 
   .game-item {
-    padding: 8px !important;
-    gap: 8px !important;
+    padding: 4px 8px !important;
+    gap: 6px !important;
+    border-radius: 5px !important;
+  }
+
+  .game-rank {
+    min-width: 20px !important;
+    font-size: 0.85em !important;
+  }
+
+  .game-name {
+    font-size: 0.9em !important;
+  }
+
+  .game-stats {
+    font-size: 0.75em !important;
   }
 
   .activity-item {
-    padding: 8px !important;
-    gap: 8px !important;
+    padding: 4px 8px !important;
+    gap: 6px !important;
   }
 
   .card {
-    padding: 12px !important;
+    padding: 8px !important;
+    border-radius: 6px !important;
   }
 
   .card-title {
-    font-size: 1.1rem !important;
-    margin-bottom: 10px !important;
+    font-size: 0.95rem !important;
+    margin-bottom: 6px !important;
+  }
+
+  .content-grid {
+    gap: 8px !important;
+    margin-top: 8px !important;
+  }
+
+  .left-column,
+  .right-column {
+    gap: 8px !important;
+  }
+
+  /* Compact footer */
+  .footer {
+    margin-top: 8px !important;
+    padding: 6px 0 !important;
+  }
+
+  .footer-content {
+    padding: 0 10px !important;
+  }
+
+  .footer-left p {
+    font-size: 0.75em !important;
   }
 
   /* Compact activity list */
   .activity-list {
-    max-height: 250px !important;
+    max-height: 150px !important;
+  }
+}
+
+/* Specific fix for short landscape screens (like iPad with toolbars) */
+@media screen and (max-height: 750px) and (min-width: 900px) {
+  .chart-wrapper {
+    height: 140px !important;
+  }
+
+  .header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    text-align: left !important;
+    padding: 4px 12px !important;
+  }
+
+  .title-section {
+    text-align: left !important;
+  }
+
+  .subtitle {
+    margin-bottom: 0 !important;
+    justify-content: flex-start !important;
+  }
+
+  /* Hide event dates and status text to save space, keeping only the basics */
+  .event-dates,
+  .event-status {
+    display: none !important;
+  }
+
+  /* Make currently playing even more compact or limit height */
+  .game-list {
+    max-height: 200px;
+    overflow-y: auto;
   }
 }
 
