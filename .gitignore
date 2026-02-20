@@ -21,3 +21,6 @@ backups/
 ssl/
 certbot/
 letsencrypt/
+
+# Temporary agent files
+tmpclaude-*
