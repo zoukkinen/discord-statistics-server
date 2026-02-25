@@ -33,7 +33,7 @@ const EventDetail: Component<EventDetailProps> = (props) => {
 
       // Fetch event-specific top games using date range
       const topGamesResponse = await fetch(
-        `/api/top-games?start=${eventData.startDate}&end=${eventData.endDate}&limit=999`
+        `/api/top-games?start=${eventData.startDate}&end=${eventData.endDate}&limit=999`,
       );
       if (topGamesResponse.ok) {
         const eventTopGames = await topGamesResponse.json();
@@ -44,7 +44,7 @@ const EventDetail: Component<EventDetailProps> = (props) => {
 
       // Fetch event-specific member history
       const memberHistoryResponse = await fetch(
-        `/api/member-history?start=${eventData.startDate}&end=${eventData.endDate}`
+        `/api/member-history?start=${eventData.startDate}&end=${eventData.endDate}`,
       );
       if (memberHistoryResponse.ok) {
         const eventMemberHistory = await memberHistoryResponse.json();
@@ -52,7 +52,7 @@ const EventDetail: Component<EventDetailProps> = (props) => {
       } else {
         console.error(
           "Failed to fetch member history:",
-          memberHistoryResponse.status
+          memberHistoryResponse.status,
         );
       }
     } catch (err) {
@@ -65,7 +65,17 @@ const EventDetail: Component<EventDetailProps> = (props) => {
 
   return (
     <div class="app">
-      <Header />
+      <Header
+        event={
+          event()
+            ? {
+                name: event().name,
+                startDate: event().startDate,
+                endDate: event().endDate,
+              }
+            : undefined
+        }
+      />
 
       <main class="main-content">
         <Show when={error()}>
