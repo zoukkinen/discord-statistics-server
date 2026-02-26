@@ -267,8 +267,7 @@ export class MigrationRunner {
 
     // No events at all — create a default one from env vars
     const eventName = process.env.EVENT_NAME || "Local Dev Event";
-    const startDate =
-      process.env.EVENT_START_DATE || new Date().toISOString();
+    const startDate = process.env.EVENT_START_DATE || new Date().toISOString();
     const endDate =
       process.env.EVENT_END_DATE ||
       new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -282,8 +281,6 @@ export class MigrationRunner {
       [eventName, startDate, endDate, timezone, description, guildId],
     );
 
-    console.log(
-      `✅ Created default event "${eventName}" for guild ${guildId}`,
-    );
+    console.log(`✅ Created default event "${eventName}" for guild ${guildId}`);
   }
 }
