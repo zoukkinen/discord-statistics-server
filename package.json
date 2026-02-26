@@ -44,8 +44,8 @@
   "license": "ISC",
   "type": "commonjs",
   "engines": {
-    "node": ">=20.x",
-    "npm": ">=10.x"
+    "node": ">=24.x",
+    "npm": ">=11.x"
   },
   "dependencies": {
     "@babel/core": "^7.25.7",

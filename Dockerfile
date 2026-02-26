@@ -6,7 +6,7 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 
 # Copy package files first for better layer caching
-COPY package*.json ./
+COPY package*.json .npmrc* ./
 
 # Install all dependencies (including dev dependencies for building)
 RUN npm ci
@@ -27,7 +27,7 @@ RUN apk add --no-cache wget dumb-init
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package*.json .npmrc* ./
 
 # Install dependencies based on NODE_ENV
 ARG NODE_ENV=production
