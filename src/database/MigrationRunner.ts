@@ -29,6 +29,9 @@ export class MigrationRunner {
     // Run migration 004 - Add session management fields
     await this.runMigration004();
 
+    // Always ensure at least one event exists for the guild (idempotent)
+    await this.ensureEventExists();
+
     console.log("✅ All migrations completed successfully");
   }
 
@@ -230,5 +233,57 @@ export class MigrationRunner {
       console.error(`❌ Migration ${migrationName} failed:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Ensures at least one event exists for the guild.
+   * Runs on every startup after migrations so the bot always has an event to record to,
+   * even if the DB was partially reset or the guild ID changed.
+   */
+  private async ensureEventExists(): Promise<void> {
+    const guildId = this.guildId;
+
+    const existing = await this.client.query(
+      "SELECT id FROM events WHERE guild_id = $1 LIMIT 1",
+      [guildId],
+    );
+
+    if (existing.rows.length > 0) {
+      const active = await this.client.query(
+        "SELECT id FROM events WHERE guild_id = $1 AND is_active = true LIMIT 1",
+        [guildId],
+      );
+      if (active.rows.length === 0) {
+        // Events exist but none active — activate the most recent one
+        await this.client.query(
+          `UPDATE events SET is_active = true
+           WHERE id = (SELECT id FROM events WHERE guild_id = $1 ORDER BY created_at DESC LIMIT 1)`,
+          [guildId],
+        );
+        console.log(`⚡ Activated most recent event for guild ${guildId}`);
+      }
+      return;
+    }
+
+    // No events at all — create a default one from env vars
+    const eventName = process.env.EVENT_NAME || "Local Dev Event";
+    const startDate =
+      process.env.EVENT_START_DATE || new Date().toISOString();
+    const endDate =
+      process.env.EVENT_END_DATE ||
+      new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const timezone = process.env.EVENT_TIMEZONE || "UTC";
+    const description =
+      process.env.EVENT_DESCRIPTION || "Auto-created default event";
+
+    await this.client.query(
+      `INSERT INTO events (name, start_date, end_date, timezone, description, guild_id, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, true)`,
+      [eventName, startDate, endDate, timezone, description, guildId],
+    );
+
+    console.log(
+      `✅ Created default event "${eventName}" for guild ${guildId}`,
+    );
   }
 }
