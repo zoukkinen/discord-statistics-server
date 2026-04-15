@@ -491,6 +491,12 @@ const EventManager: Component<EventManagerProps> = (props) => {
           <button class="logout-button" onClick={handleLogout}>
             🚪 Logout
           </button>
+          <button
+            class="back-to-dashboard-button"
+            onClick={() => (window.location.href = "/")}
+          >
+            ⬅️ Dashboard
+          </button>
         </div>
       </div>
 
