@@ -3,7 +3,7 @@
     text-align: center;
     margin-bottom: 15px;
     background: rgba(0, 0, 0, 0.85);
-    padding: 20px;
+    padding: 20px 72px 20px 20px;
     border-radius: 12px;
     backdrop-filter: blur(20px);
     border: 1px solid rgba(0, 255, 157, 0.3);
@@ -31,6 +31,7 @@
 .header-content {
     position: relative;
     z-index: 1;
+    min-width: 0;
 }
 
 .title-section {
@@ -54,6 +55,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-wrap: wrap;
     gap: 10px;
 }
 
@@ -77,6 +79,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-wrap: wrap;
     gap: 15px;
     margin-bottom: 5px;
 }
@@ -275,11 +278,8 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .header-content {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 15px;
-        padding: 15px 20px;
+    .header {
+        padding: 16px 60px 16px 16px;
     }
     
     .main-title {
@@ -288,8 +288,12 @@
     
     .subtitle {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: center;
         gap: 8px;
+    }
+
+    .event-dates {
+        text-align: center;
     }
     
     .modal-content {
@@ -326,6 +330,13 @@
     justify-content: center;
     width: 40px;
     height: 40px;
+}
+
+@media (max-width: 768px) {
+    .burger-menu {
+        top: 14px;
+        right: 14px;
+    }
 }
 
 .burger-menu:hover {
