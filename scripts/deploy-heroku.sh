@@ -119,7 +119,7 @@ heroku git:remote --app $APP_NAME
 echo -e "${YELLOW}🚀 Deploying to Heroku...${NC}"
 git add .
 git commit -m "Deploy to Heroku: Assembly Discord Tracker" --allow-empty
-git push heroku main
+git push heroku main --force
 
 # Wait for deployment
 echo -e "${YELLOW}⏳ Waiting for deployment to complete...${NC}"
