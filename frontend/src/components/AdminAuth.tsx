@@ -100,9 +100,6 @@ const AdminAuth: Component<AdminAuthProps> = (props) => {
           <p>
             💡 The admin password is configured in your environment variables
           </p>
-          <p>
-            Default password: <code>admin123</code>
-          </p>
         </div>
       </div>
     </div>
